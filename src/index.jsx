@@ -1,14 +1,21 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// Importamos el componente principal 'App' desde el archivo que creamos.
-import App from './RadiographyClassifier.jsx';
+// 1. Importa el CSS global (con las directivas @tailwind)
+import './index.css'; 
+// 2. Importa tu componente principal (asumimos que exporta como default App)
+import App from './RadiographyClassifier.jsx'; 
 
-// El rootElement debe existir en tu index.html (típicamente <div id="root"></div>).
+// Obtener el elemento raíz del HTML
 const rootElement = document.getElementById('root');
 
-// Monta y renderiza el componente App.
-ReactDOM.createRoot(rootElement).render(
-<React.StrictMode>
-<App />
-</React.StrictMode>,
-);
+if (rootElement) {
+  // Inicializar y renderizar la aplicación de React
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      {/* El componente App es el componente RadiographyClassifier */}
+      <App />
+    </React.StrictMode>,
+  );
+} else {
+  console.error('No se encontró el elemento raíz con id="root" en index.html.');
+}
