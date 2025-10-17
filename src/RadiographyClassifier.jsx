@@ -1,9 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-// Para el desarrollo web, usaremos un componente que maneje el estado de la aplicación.
-// Nota: En un proyecto real, necesitarías instalar las dependencias de Tailwind CSS y React.
-// Aquí se asume que Tailwind está disponible.
-
-// URL de la API proporcionada por el usuario (se mantiene aquí, pero no se muestra)
+// Nota: La URL de la API se mantiene codificada aquí para el entorno de prueba.
+// En un proyecto real, se usaría una variable de entorno.
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/classify";
 
 // Constantes de Estado
@@ -13,7 +10,7 @@ const STEPS = {
   RESULT: 'result'
 };
 
-// Componente principal de la aplicación
+// Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
 const App = () => {
   // ----------------------------------------------------
   // ESTADO
@@ -23,13 +20,12 @@ const App = () => {
   const [previewUrl, setPreviewUrl] = useState(null); // URL de la imagen para previsualización
   const [classificationResult, setClassificationResult] = useState(null); // Resultado de la IA
   const [error, setError] = useState(null);
-  const [isDragOver, setIsDragOver] = useState(false); // Nuevo estado para Drag and Drop
+  const [isDragOver, setIsDragOver] = useState(false); 
 
   // ----------------------------------------------------
-  // EJEMPLOS DE DATOS Y DESCRIPCIONES
+  // DATOS Y DESCRIPCIONES
   // ----------------------------------------------------
   
-  // Datos y descripciones detalladas para la vista de resultado
   const resultData = useMemo(() => ({
     Sano: {
       title: "Diagnóstico: Oído Medio Sano",
@@ -57,7 +53,6 @@ const App = () => {
   // LÓGICA DE MANEJO DE ARCHIVOS
   // ----------------------------------------------------
 
-  // Función interna para establecer el archivo y la previsualización
   const processFile = (selectedFile) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
         setFile(selectedFile);
@@ -70,12 +65,10 @@ const App = () => {
     }
   };
 
-  // Maneja la selección de archivos (Input File)
   const handleFileChange = (e) => {
     processFile(e.target.files[0]);
   };
 
-  // Maneja el evento de soltar archivos (Drag and Drop)
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
@@ -85,7 +78,6 @@ const App = () => {
     }
   };
 
-  // Previene el comportamiento por defecto (necesario para drag and drop)
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -94,7 +86,6 @@ const App = () => {
   const handleDragLeave = () => {
     setIsDragOver(false);
   };
-
 
   // ----------------------------------------------------
   // LÓGICA DE LA API (Clasificación)
@@ -110,7 +101,6 @@ const App = () => {
     setError(null);
 
     const formData = new FormData();
-    // En web, el tipo MIME debe ser correcto.
     formData.append('file', file, file.name);
 
     try {
@@ -125,14 +115,12 @@ const App = () => {
 
       const result = await response.json();
       
-      // Asume que la clasificación viene en la clave 'classification' y es una cadena 'Sano' o 'Enfermo'
       const classification = result?.classification; 
 
       if (!classification) {
          throw new Error("Respuesta de API inválida: No se encontró la clasificación.");
       }
       
-      // Normalizar la clasificación (solo las primeras letras o mayúsculas)
       const normalizedClassification = classification.toLowerCase().includes('sano') ? 'Sano' : 'Enfermo';
 
       setClassificationResult(normalizedClassification);
@@ -143,25 +131,21 @@ const App = () => {
       
       let displayError = `Error: ${err.message}. Verifica el formato de la API.`;
 
-      // Nuevo manejo de error que prioriza la explicación de CORS y Cold Start
       if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
-        // Mostramos un error más específico para problemas de red/server
         displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor (CORS o 'Arranque en Frío'). Inténtalo de nuevo en 30 segundos.";
       }
 
       setError(displayError);
-      setStep(STEPS.UPLOAD); // Volver al inicio en caso de error
+      setStep(STEPS.UPLOAD); 
       setClassificationResult(null);
     }
   }, [file]);
 
-  // Función para reiniciar el proceso
   const handleReset = () => {
     setStep(STEPS.UPLOAD);
     setFile(null);
     setClassificationResult(null);
     setError(null);
-    // Limpiar la URL de previsualización para liberar memoria
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -169,13 +153,11 @@ const App = () => {
   };
 
   // ----------------------------------------------------
-  // RENDERING (Lógica de las 3 Vistas - Opción 3)
+  // RENDERING (Vistas)
   // ----------------------------------------------------
 
-  // Vista de Subida (Paso 1)
   const renderUploadStep = () => (
     <div className="flex flex-col items-center p-6 space-y-4">
-      {/* Área de Drag and Drop/Input File */}
       <div 
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -218,7 +200,6 @@ const App = () => {
     </div>
   );
 
-  // Vista de Procesamiento (Paso 2)
   const renderProcessingStep = () => (
     <div className="flex flex-col items-center justify-center p-8 space-y-6">
       <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -230,16 +211,13 @@ const App = () => {
     </div>
   );
 
-  // Vista de Resultados (Paso 3)
   const renderResultStep = () => {
-    // Si no hay resultado (por si acaso), volvemos al inicio
     if (!classificationResult) return renderUploadStep();
 
     const data = resultData[classificationResult];
     const isHealthy = classificationResult === 'Sano';
     const classificationText = classificationResult.toUpperCase();
     
-    // Colores basados en el resultado
     const statusColor = isHealthy ? "bg-green-500" : "bg-red-500";
     const statusRing = isHealthy ? "ring-green-300" : "ring-red-300";
     const detailColor = isHealthy ? "text-green-800 bg-green-50 border-green-200" : "text-red-800 bg-red-50 border-red-200";
@@ -251,21 +229,18 @@ const App = () => {
             <span className={`${isHealthy ? 'text-green-600' : 'text-red-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
           </h2>
           
-          {/* Título y Clasificación */}
           <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
             {classificationText}
           </div>
           <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3>
         </div>
 
-        {/* Detalles y Recomendaciones */}
         <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
             <p className="text-sm">{data.description}</p>
         </div>
 
 
         <div className="grid md:grid-cols-2 gap-6 items-start">
-          {/* Imagen de Usuario */}
           <div className="flex flex-col items-center space-y-3">
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
             <img
@@ -275,11 +250,10 @@ const App = () => {
             />
           </div>
 
-          {/* Puntos Clave de Clasificación (Ejemplos Comparativos Mejorados) */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Hallazgos Clave de la IA:</h3>
             <ul className="space-y-2">
-              {data.examples.map((example, index) => (
+              {data.examples.map((example) => (
                 <li key={example.id} className={`flex items-center p-3 rounded-lg shadow-sm border border-gray-200 ${isHealthy ? 'bg-green-50' : 'bg-red-50'}`}>
                   <span className={`w-2 h-2 rounded-full mr-3 ${isHealthy ? 'bg-green-500' : 'bg-red-500'}`}></span>
                   <p className="text-sm font-medium text-gray-700">{example.label}</p>
@@ -299,7 +273,6 @@ const App = () => {
     );
   };
 
-  // Determinar qué vista renderizar
   const renderCurrentStep = () => {
     switch (step) {
       case STEPS.PROCESSING:
@@ -312,7 +285,6 @@ const App = () => {
     }
   };
 
-  // Determinar el indicador del paso
   const getStepIndicator = () => {
     let currentStep;
     switch (step) {
@@ -352,7 +324,6 @@ const App = () => {
         </div>
       </main>
       
-      {/* Eliminamos el footer que mostraba la URL de la API */}
       <footer className="mt-8 text-sm text-gray-500">
         Desarrollado con React y Tailwind CSS
       </footer>
