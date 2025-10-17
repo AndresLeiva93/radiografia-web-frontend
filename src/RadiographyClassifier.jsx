@@ -115,10 +115,11 @@ const App = () => {
 
       const result = await response.json();
       
+      // La API debe devolver la clasificación en la clave 'classification'
       const classification = result?.classification; 
 
       if (!classification) {
-         throw new Error("Respuesta de API inválida: No se encontró la clasificación.");
+         throw new Error("Respuesta de API inválida: No se encontró la clave 'classification'.");
       }
       
       const normalizedClassification = classification.toLowerCase().includes('sano') ? 'Sano' : 'Enfermo';
@@ -202,9 +203,8 @@ const App = () => {
 
   const renderProcessingStep = () => (
     <div className="flex flex-col items-center justify-center p-8 space-y-6">
-      <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.93 8.93 0 0115 19H5M20 9V4M4 12a8 8 0 018-8v0a8 8 0 018 8v0a8 8 0 01-8 8v0a8 8 0 01-8-8z" />
       </svg>
       <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
       <p className="text-gray-600">Esto puede tomar unos segundos. Por favor, espera.</p>
@@ -305,13 +305,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
-      {/* Script para cargar Tailwind CSS (solo para entorno de prueba) */}
-      <script src="https://cdn.tailwindcss.com"></script>
-      <style>{`
-        /* Usar Inter como fuente principal */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        .font-inter { font-family: 'Inter', sans-serif; }
-      `}</style>
       
       <main className="w-full max-w-3xl">
         <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">🩺 Clasificador de Imágenes Médicas IA</h1>
