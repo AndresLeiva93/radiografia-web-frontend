@@ -1,0 +1,10 @@
+/* Estas directivas son cruciales para que Tailwind funcione.
+  Indican a PostCSS/Tailwind que inyecte todo el código base,
+  los componentes y las utilidades en este archivo.
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Puedes añadir cualquier estilo global CSS aquí, si es necesario. 
+   Por ejemplo, para configurar fuentes o estilos de fondo del body. */
