@@ -1,23 +1,17 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Clasificador IA de Radiografías</title>
-</head>
-<body>
-    <!-- 
-        ESTE DIV ES EL CONTENEDOR RAIZ. 
-        El archivo src/index.jsx busca este ID ("root") para inyectar toda la aplicación React.
-        Es fundamental para el funcionamiento.
-    -->
+    <title>Clasificador de Otitis Media</title>
+  </head>
+  <body>
+    <!-- Este es el contenedor donde se montará toda tu aplicación React -->
     <div id="root"></div>
     
-    <!-- 
-        Vite inyectará automáticamente el script compilado de tu aplicación 
-        (el contenido de tu index.jsx y RadiographyClassifier.jsx) aquí.
-    -->
+    <!-- Este script es crucial. Indica a Vite dónde está el punto de entrada de tu código.
+         Vite se encarga de reescribir esta ruta durante el proceso de 'build'. -->
     <script type="module" src="/src/index.jsx"></script>
-</body>
+  </body>
 </html>
