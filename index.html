@@ -2,16 +2,16 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <!-- Usamos una ruta absoluta / para asegurar que Vercel encuentre el asset -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clasificador de Otitis Media</title>
   </head>
   <body>
-    <!-- Este es el contenedor donde se montará toda tu aplicación React -->
+    <!-- Contenedor donde React montará la aplicación -->
     <div id="root"></div>
     
-    <!-- Este script es crucial. Indica a Vite dónde está el punto de entrada de tu código.
-         Vite se encarga de reescribir esta ruta durante el proceso de 'build'. -->
+    <!-- Script crucial para la carga del bundle de React/Vite -->
     <script type="module" src="/src/index.jsx"></script>
   </body>
 </html>
