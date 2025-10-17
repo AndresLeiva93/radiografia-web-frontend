@@ -8,7 +8,7 @@ const rootElement = document.getElementById('root');
 
 // Monta y renderiza el componente App.
 ReactDOM.createRoot(rootElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+<React.StrictMode>
+<App />
+</React.StrictMode>,
 );
