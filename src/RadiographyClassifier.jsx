@@ -16,9 +16,9 @@ const STEPS = {
 // La ruta es ABSOLUTA y apunta a /public/images/
 // =================================================================
 const EXAMPLE_IMAGES = {
-  'Normal': '/images/Normal.jpg', 
-  'AOE': '/images/AOE.jpg',
-  'AOM': '/images/AOM.jpg',
+  'Normal': 'public/images/Normal.jpg', 
+  'AOE': 'public/images/AOE.jpg',
+  'AOM': 'public/images/AOM.jpg',
 };
 
 // Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
