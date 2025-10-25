@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useMemo } from 'react';
-// Nota: La URL de la API se mantiene codificada aquí para el entorno de prueba.
-// En un proyecto real, se usaría una variable de entorno.
-const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/classify";
+
+// =================================================================
+// 🚨 CAMBIO 1: Corregir la URL de la API a '/predict' (y no '/classify')
+// =================================================================
+const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
 const STEPS = {
@@ -10,25 +12,27 @@ const STEPS = {
   RESULT: 'result'
 };
 
-// Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
+// Componente principal de la aplicación
 const App = () => {
   // ----------------------------------------------------
   // ESTADO
   // ----------------------------------------------------
   const [step, setStep] = useState(STEPS.UPLOAD);
-  const [file, setFile] = useState(null); // Archivo subido por el usuario
-  const [previewUrl, setPreviewUrl] = useState(null); // URL de la imagen para previsualización
-  const [classificationResult, setClassificationResult] = useState(null); // Resultado de la IA
+  const [file, setFile] = useState(null); 
+  const [previewUrl, setPreviewUrl] = useState(null); 
+  // classificationResult ahora guardará la cadena exacta: 'Normal', 'AOE', o 'AOM'
+  const [classificationResult, setClassificationResult] = useState(null); 
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false); 
-
+  
   // ----------------------------------------------------
   // DATOS Y DESCRIPCIONES
-  // ----------------------------------------------------
-  
+  // =================================================================
+  // 🚨 CAMBIO 2: Mapeo para las 3 clases (Normal, AOE, AOM)
+  // =================================================================
   const resultData = useMemo(() => ({
-    Sano: {
-      title: "Diagnóstico: Oído Medio Sano",
+    'Normal': {
+      title: "Diagnóstico: Oído Medio Sano (Normal)",
       description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis media. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados para un oído saludable. Esto indica una baja probabilidad de patología en la región analizada.",
       color: "green",
       examples: [
@@ -37,20 +41,30 @@ const App = () => {
         { id: 3, label: 'Ausencia de Opacidades y Fluidos' },
       ],
     },
-    Enfermo: {
-      title: "Diagnóstico: Indicativo de Otitis Media",
-      description: "El modelo de IA detectó opacidades, llenado anómalo y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de un proceso inflamatorio o infeccioso (otitis media). Se recomienda encarecidamente la revisión y confirmación por un especialista médico (Otorrinolaringólogo).",
+    'AOE': {
+      title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+      description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Esto podría manifestarse como inflamación o afectación del tejido blando externo. Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
+      color: "orange",
+      examples: [
+        { id: 4, label: 'Indicadores de Inflamación del Conducto Externo' },
+        { id: 5, label: 'Irregularidades no asociadas al oído medio' },
+        { id: 6, label: 'Revisión prioritaria por especialista (Otorrinolaringólogo).' },
+      ],
+    },
+    'AOM': {
+      title: "Diagnóstico: Otitis Media Aguda (AOM)",
+      description: "El modelo de IA detectó opacidades, llenado anómalo y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda encarecidamente la revisión y confirmación por un especialista médico (Otorrinolaringólogo).",
       color: "red",
       examples: [
-        { id: 4, label: 'Opacidad o Llenado Anormal (Pus/Líquido)' },
-        { id: 5, label: 'Engrosamiento de Mucosa y Contornos Irregulares' },
-        { id: 6, label: 'Posibles Niveles de Líquido/Aire Detectados' },
+        { id: 7, label: 'Opacidad o Llenado Anormal (Pus/Líquido)' },
+        { id: 8, label: 'Engrosamiento de Mucosa y Contornos Irregulares' },
+        { id: 9, label: 'Posibles Niveles de Líquido/Aire Detectados' },
       ],
     }
   }), []);
 
   // ----------------------------------------------------
-  // LÓGICA DE MANEJO DE ARCHIVOS
+  // LÓGICA DE MANEJO DE ARCHIVOS (Sin cambios)
   // ----------------------------------------------------
 
   const processFile = (selectedFile) => {
@@ -100,8 +114,12 @@ const App = () => {
     setStep(STEPS.PROCESSING);
     setError(null);
 
+    // =================================================================
+    // 🚨 CAMBIO 3: Cambiar la clave del FormData de 'file' a 'image'
+    //             Para coincidir con el código de app.py
+    // =================================================================
     const formData = new FormData();
-    formData.append('file', file, file.name);
+    formData.append('image', file, file.name); // Antes era 'file'
 
     try {
       const response = await fetch(RENDER_API_URL, {
@@ -110,21 +128,24 @@ const App = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
+        // Mejor manejo de errores HTTP para mostrar al usuario
+        const errorBody = await response.json().catch(() => ({}));
+        const statusText = response.statusText || 'Error Desconocido';
+        const apiError = errorBody.error || `Error ${response.status}: ${statusText}`;
+        throw new Error(apiError);
       }
 
       const result = await response.json();
       
-      // La API debe devolver la clasificación en la clave 'classification'
-      const classification = result?.classification; 
+      // La API debe devolver la predicción en la clave 'prediccion'
+      const classification = result?.prediccion; 
 
-      if (!classification) {
-         throw new Error("Respuesta de API inválida: No se encontró la clave 'classification'.");
+      if (!classification || !resultData[classification]) {
+         throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
       }
       
-      const normalizedClassification = classification.toLowerCase().includes('sano') ? 'Sano' : 'Enfermo';
-
-      setClassificationResult(normalizedClassification);
+      // La clave classification ahora es exactamente 'Normal', 'AOE', o 'AOM'
+      setClassificationResult(classification);
       setStep(STEPS.RESULT);
 
     } catch (err) {
@@ -140,7 +161,7 @@ const App = () => {
       setStep(STEPS.UPLOAD); 
       setClassificationResult(null);
     }
-  }, [file]);
+  }, [file, resultData]); // Añadir resultData a la lista de dependencias
 
   const handleReset = () => {
     setStep(STEPS.UPLOAD);
@@ -207,7 +228,7 @@ const App = () => {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.93 8.93 0 0115 19H5M20 9V4M4 12a8 8 0 018-8v0a8 8 0 018 8v0a8 8 0 01-8 8v0a8 8 0 01-8-8z" />
       </svg>
       <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
-      <p className="text-gray-600">Esto puede tomar unos segundos. Por favor, espera.</p>
+      <p className="text-gray-600">Esto puede tomar unos segundos.</p>
     </div>
   );
 
@@ -215,18 +236,19 @@ const App = () => {
     if (!classificationResult) return renderUploadStep();
 
     const data = resultData[classificationResult];
-    const isHealthy = classificationResult === 'Sano';
+    const isHealthy = classificationResult === 'Normal';
     const classificationText = classificationResult.toUpperCase();
     
-    const statusColor = isHealthy ? "bg-green-500" : "bg-red-500";
-    const statusRing = isHealthy ? "ring-green-300" : "ring-red-300";
-    const detailColor = isHealthy ? "text-green-800 bg-green-50 border-green-200" : "text-red-800 bg-red-50 border-red-200";
+    // Los colores ahora dependen de la clave 'color' en resultData
+    const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
+    const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
+    const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
 
     return (
       <div className="p-6 space-y-8">
         <div className="text-center">
           <h2 className="text-2xl font-extrabold text-gray-900">
-            <span className={`${isHealthy ? 'text-green-600' : 'text-red-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
+            <span className={`${data.color === "green" ? 'text-green-600' : 'text-red-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
           </h2>
           
           <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
@@ -254,8 +276,8 @@ const App = () => {
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Hallazgos Clave de la IA:</h3>
             <ul className="space-y-2">
               {data.examples.map((example) => (
-                <li key={example.id} className={`flex items-center p-3 rounded-lg shadow-sm border border-gray-200 ${isHealthy ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <span className={`w-2 h-2 rounded-full mr-3 ${isHealthy ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <li key={example.id} className={`flex items-center p-3 rounded-lg shadow-sm border border-gray-200 ${data.color === "green" ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <span className={`w-2 h-2 rounded-full mr-3 ${data.color === "green" ? 'bg-green-500' : 'bg-red-500'}`}></span>
                   <p className="text-sm font-medium text-gray-700">{example.label}</p>
                 </li>
               ))}
