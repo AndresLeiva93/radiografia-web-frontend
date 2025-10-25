@@ -12,13 +12,13 @@ const STEPS = {
 
 // =================================================================
 // RUTAS DE IMÁGENES DE EJEMPLO
-// 🚨 Usamos .jpg, ya que tu estructura de archivos lo confirma
+// 🚨 CORRECCIÓN EXTENSIÓN: Usamos '.jpg' (tal como están tus archivos en /public/images/)
 // La ruta es ABSOLUTA y apunta a /public/images/
 // =================================================================
 const EXAMPLE_IMAGES = {
-  'Normal': 'public/images/Normal.jpg', 
-  'AOE': 'public/images/AOE.jpg',
-  'AOM': 'public/images/AOM.jpg',
+  'Normal': '/images/Normal.jpg', 
+  'AOE': '/images/AOE.jpg',
+  'AOM': '/images/AOM.jpg',
 };
 
 // Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
@@ -107,7 +107,7 @@ const App = () => {
     setError(null);
 
     const formData = new FormData();
-    // 🚨 CORRECCIÓN CLAVE: Usamos 'image' como clave para el backend
+    // 🚨 CORRECCIÓN CLAVE: Usamos 'image' como clave para el backend (según el error 400 anterior)
     formData.append('image', file, file.name); 
 
     try {
@@ -123,7 +123,7 @@ const App = () => {
 
       const result = await response.json();
       
-      // Esperamos que la clave de predicción sea 'prediccion'
+      // Esperamos que la clave de predicción sea 'prediccion' (o la que use tu API)
       const classification = result?.prediccion; 
 
       if (!classification || !resultData[classification]) {
@@ -261,7 +261,7 @@ const App = () => {
             />
           </div>
 
-          {/* 🚨 SEGUNDA COLUMNA: Renderizado de Imágenes de Ejemplo */}
+          {/* 🚨 SEGUNDA COLUMNA: Renderizado de Imágenes de Ejemplo - Usa .jpg */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
             
@@ -269,7 +269,7 @@ const App = () => {
                 {Object.keys(EXAMPLE_IMAGES).map((key) => (
                     <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm">
                         <img 
-                            // 🚨 USO DE LA RUTA ABSOLUTA DESDE /public/images
+                            // Uso de la constante EXAMPLE_IMAGES que tiene la extensión .jpg
                             src={EXAMPLE_IMAGES[key]} 
                             alt={`Ejemplo de ${key}`} 
                             className="w-full h-auto object-cover rounded-md border-2 border-gray-100"
