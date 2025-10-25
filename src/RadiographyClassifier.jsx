@@ -12,7 +12,8 @@ const STEPS = {
 
 // =================================================================
 // RUTAS DE IMÁGENES DE EJEMPLO
-// La ruta es ABSOLUTA desde la raíz servida (asumiendo /public/images)
+// 🚨 Nota: La ruta es ABSOLUTA desde la raíz servida. 
+// Para que esto funcione, la carpeta 'images' debe estar dentro de 'public'
 // =================================================================
 const EXAMPLE_IMAGES = {
   'Normal': '/images/Normal.png', 
@@ -34,6 +35,7 @@ const App = () => {
   
   // ----------------------------------------------------
   // DATOS Y DESCRIPCIONES (Diseño para 3 clases)
+  // 🚨 La propiedad 'examples' se ha eliminado.
   // ----------------------------------------------------
   const resultData = useMemo(() => ({
     'Normal': {
@@ -164,7 +166,6 @@ const App = () => {
 
   const renderUploadStep = () => (
     <div className="flex flex-col items-center p-6 space-y-4">
-      {/* ... (Contenido de renderUploadStep sin cambios) */}
       <div 
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -234,7 +235,7 @@ const App = () => {
       <div className="p-6 space-y-8">
         <div className="text-center">
           <h2 className="text-2xl font-extrabold text-gray-900">
-            <span className={`${data.color === "green" ? 'text-green-600' : 'text-red-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
+            <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
           </h2>
           
           <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
@@ -259,7 +260,7 @@ const App = () => {
             />
           </div>
 
-          {/* SEGUNDA COLUMNA: Imágenes de Ejemplo */}
+          {/* SEGUNDA COLUMNA: Imágenes de Ejemplo (Reemplazo de Hallazgos Clave) */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
             
