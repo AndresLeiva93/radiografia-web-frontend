@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 
-// URL DE LA API: Asegúrate de que esta URL sea la de tu servicio Flask en Render
+// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
@@ -12,16 +12,16 @@ const STEPS = {
 
 // =================================================================
 // RUTAS DE IMÁGENES DE EJEMPLO
-// 🚨 Nota: La ruta es ABSOLUTA desde la raíz servida. 
-// Para que esto funcione, la carpeta 'images' debe estar dentro de 'public'
+// 🚨 Usamos .jpg, ya que tu estructura de archivos lo confirma
+// La ruta es ABSOLUTA y apunta a /public/images/
 // =================================================================
 const EXAMPLE_IMAGES = {
-  'Normal': '/images/Normal.png', 
-  'AOE': '/images/AOE.png',
-  'AOM': '/images/AOM.png',
+  'Normal': '/images/Normal.jpg', 
+  'AOE': '/images/AOE.jpg',
+  'AOM': '/images/AOM.jpg',
 };
 
-// Componente principal de la aplicación
+// Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
 const App = () => {
   // ----------------------------------------------------
   // ESTADO
@@ -32,11 +32,11 @@ const App = () => {
   const [classificationResult, setClassificationResult] = useState(null); 
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false); 
+
+  // ----------------------------------------------------
+  // DATOS Y DESCRIPCIONES (3 clases: Normal, AOE, AOM)
+  // ----------------------------------------------------
   
-  // ----------------------------------------------------
-  // DATOS Y DESCRIPCIONES (Diseño para 3 clases)
-  // 🚨 La propiedad 'examples' se ha eliminado.
-  // ----------------------------------------------------
   const resultData = useMemo(() => ({
     'Normal': {
       title: "Diagnóstico: Oído Medio Sano (Normal)",
@@ -94,7 +94,7 @@ const App = () => {
   };
 
   // ----------------------------------------------------
-  // LÓGICA DE LA API (Clasificación) - Usa 'image'
+  // LÓGICA DE LA API (Clasificación)
   // ----------------------------------------------------
 
   const classifyImage = useCallback(async () => {
@@ -107,7 +107,8 @@ const App = () => {
     setError(null);
 
     const formData = new FormData();
-    formData.append('image', file, file.name); // Clave 'image' para el backend
+    // 🚨 CORRECCIÓN CLAVE: Usamos 'image' como clave para el backend
+    formData.append('image', file, file.name); 
 
     try {
       const response = await fetch(RENDER_API_URL, {
@@ -116,14 +117,14 @@ const App = () => {
       });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
         const statusText = response.statusText || 'Error Desconocido';
-        const apiError = errorBody.error || `Error ${response.status}: ${statusText}`;
-        throw new Error(apiError);
+        throw new Error(`Error HTTP: ${response.status}. ${statusText}`);
       }
 
       const result = await response.json();
-      const classification = result?.prediccion; // Clave 'prediccion' del backend
+      
+      // Esperamos que la clave de predicción sea 'prediccion'
+      const classification = result?.prediccion; 
 
       if (!classification || !resultData[classification]) {
          throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
@@ -138,7 +139,7 @@ const App = () => {
       let displayError = `Error: ${err.message}. Verifica el formato de la API.`;
 
       if (err.message.includes("Error HTTP: 404")) {
-         displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma que la ruta del servidor de Render es la correcta.";
+         displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma que la ruta del servidor de Render es la correcta (debe ser /predict).";
       } else if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
         displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor (CORS o 'Arranque en Frío'). Inténtalo de nuevo en 30 segundos.";
       }
@@ -161,7 +162,7 @@ const App = () => {
   };
 
   // ----------------------------------------------------
-  // RENDERING (Vistas) - RESULTADO ACTUALIZADO
+  // RENDERING (Vistas) - RESULTADO FINAL CON IMÁGENES
   // ----------------------------------------------------
 
   const renderUploadStep = () => (
@@ -260,7 +261,7 @@ const App = () => {
             />
           </div>
 
-          {/* SEGUNDA COLUMNA: Imágenes de Ejemplo (Reemplazo de Hallazgos Clave) */}
+          {/* 🚨 SEGUNDA COLUMNA: Renderizado de Imágenes de Ejemplo */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
             
@@ -268,6 +269,7 @@ const App = () => {
                 {Object.keys(EXAMPLE_IMAGES).map((key) => (
                     <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm">
                         <img 
+                            // 🚨 USO DE LA RUTA ABSOLUTA DESDE /public/images
                             src={EXAMPLE_IMAGES[key]} 
                             alt={`Ejemplo de ${key}`} 
                             className="w-full h-auto object-cover rounded-md border-2 border-gray-100"
