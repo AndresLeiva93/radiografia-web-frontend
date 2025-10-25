@@ -1,8 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 
-// =================================================================
-// 🚨 CAMBIO 1: Corregir la URL de la API a '/predict' (y no '/classify')
-// =================================================================
+// URL DE LA API: Asegúrate de que esta URL sea la de tu servicio Flask en Render
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
@@ -10,6 +8,16 @@ const STEPS = {
   UPLOAD: 'upload',
   PROCESSING: 'processing',
   RESULT: 'result'
+};
+
+// =================================================================
+// RUTAS DE IMÁGENES DE EJEMPLO
+// La ruta es ABSOLUTA desde la raíz servida (asumiendo /public/images)
+// =================================================================
+const EXAMPLE_IMAGES = {
+  'Normal': '/images/Normal.png', 
+  'AOE': '/images/AOE.png',
+  'AOM': '/images/AOM.png',
 };
 
 // Componente principal de la aplicación
@@ -20,51 +28,33 @@ const App = () => {
   const [step, setStep] = useState(STEPS.UPLOAD);
   const [file, setFile] = useState(null); 
   const [previewUrl, setPreviewUrl] = useState(null); 
-  // classificationResult ahora guardará la cadena exacta: 'Normal', 'AOE', o 'AOM'
   const [classificationResult, setClassificationResult] = useState(null); 
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false); 
   
   // ----------------------------------------------------
-  // DATOS Y DESCRIPCIONES
-  // =================================================================
-  // 🚨 CAMBIO 2: Mapeo para las 3 clases (Normal, AOE, AOM)
-  // =================================================================
+  // DATOS Y DESCRIPCIONES (Diseño para 3 clases)
+  // ----------------------------------------------------
   const resultData = useMemo(() => ({
     'Normal': {
       title: "Diagnóstico: Oído Medio Sano (Normal)",
       description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis media. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados para un oído saludable. Esto indica una baja probabilidad de patología en la región analizada.",
       color: "green",
-      examples: [
-        { id: 1, label: 'Estructura Ósea Normal y Definida' },
-        { id: 2, label: 'Cavidad Aérea del Oído Despejada' },
-        { id: 3, label: 'Ausencia de Opacidades y Fluidos' },
-      ],
     },
     'AOE': {
       title: "Diagnóstico: Otitis Externa Aguda (AOE)",
       description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Esto podría manifestarse como inflamación o afectación del tejido blando externo. Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
       color: "orange",
-      examples: [
-        { id: 4, label: 'Indicadores de Inflamación del Conducto Externo' },
-        { id: 5, label: 'Irregularidades no asociadas al oído medio' },
-        { id: 6, label: 'Revisión prioritaria por especialista (Otorrinolaringólogo).' },
-      ],
     },
     'AOM': {
       title: "Diagnóstico: Otitis Media Aguda (AOM)",
       description: "El modelo de IA detectó opacidades, llenado anómalo y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda encarecidamente la revisión y confirmación por un especialista médico (Otorrinolaringólogo).",
       color: "red",
-      examples: [
-        { id: 7, label: 'Opacidad o Llenado Anormal (Pus/Líquido)' },
-        { id: 8, label: 'Engrosamiento de Mucosa y Contornos Irregulares' },
-        { id: 9, label: 'Posibles Niveles de Líquido/Aire Detectados' },
-      ],
     }
   }), []);
 
   // ----------------------------------------------------
-  // LÓGICA DE MANEJO DE ARCHIVOS (Sin cambios)
+  // LÓGICA DE MANEJO DE ARCHIVOS
   // ----------------------------------------------------
 
   const processFile = (selectedFile) => {
@@ -102,7 +92,7 @@ const App = () => {
   };
 
   // ----------------------------------------------------
-  // LÓGICA DE LA API (Clasificación)
+  // LÓGICA DE LA API (Clasificación) - Usa 'image'
   // ----------------------------------------------------
 
   const classifyImage = useCallback(async () => {
@@ -114,12 +104,8 @@ const App = () => {
     setStep(STEPS.PROCESSING);
     setError(null);
 
-    // =================================================================
-    // 🚨 CAMBIO 3: Cambiar la clave del FormData de 'file' a 'image'
-    //             Para coincidir con el código de app.py
-    // =================================================================
     const formData = new FormData();
-    formData.append('image', file, file.name); // Antes era 'file'
+    formData.append('image', file, file.name); // Clave 'image' para el backend
 
     try {
       const response = await fetch(RENDER_API_URL, {
@@ -128,7 +114,6 @@ const App = () => {
       });
 
       if (!response.ok) {
-        // Mejor manejo de errores HTTP para mostrar al usuario
         const errorBody = await response.json().catch(() => ({}));
         const statusText = response.statusText || 'Error Desconocido';
         const apiError = errorBody.error || `Error ${response.status}: ${statusText}`;
@@ -136,15 +121,12 @@ const App = () => {
       }
 
       const result = await response.json();
-      
-      // La API debe devolver la predicción en la clave 'prediccion'
-      const classification = result?.prediccion; 
+      const classification = result?.prediccion; // Clave 'prediccion' del backend
 
       if (!classification || !resultData[classification]) {
          throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
       }
       
-      // La clave classification ahora es exactamente 'Normal', 'AOE', o 'AOM'
       setClassificationResult(classification);
       setStep(STEPS.RESULT);
 
@@ -153,7 +135,9 @@ const App = () => {
       
       let displayError = `Error: ${err.message}. Verifica el formato de la API.`;
 
-      if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
+      if (err.message.includes("Error HTTP: 404")) {
+         displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma que la ruta del servidor de Render es la correcta.";
+      } else if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
         displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor (CORS o 'Arranque en Frío'). Inténtalo de nuevo en 30 segundos.";
       }
 
@@ -161,7 +145,7 @@ const App = () => {
       setStep(STEPS.UPLOAD); 
       setClassificationResult(null);
     }
-  }, [file, resultData]); // Añadir resultData a la lista de dependencias
+  }, [file, resultData]);
 
   const handleReset = () => {
     setStep(STEPS.UPLOAD);
@@ -175,11 +159,12 @@ const App = () => {
   };
 
   // ----------------------------------------------------
-  // RENDERING (Vistas)
+  // RENDERING (Vistas) - RESULTADO ACTUALIZADO
   // ----------------------------------------------------
 
   const renderUploadStep = () => (
     <div className="flex flex-col items-center p-6 space-y-4">
+      {/* ... (Contenido de renderUploadStep sin cambios) */}
       <div 
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -232,6 +217,7 @@ const App = () => {
     </div>
   );
 
+
   const renderResultStep = () => {
     if (!classificationResult) return renderUploadStep();
 
@@ -239,7 +225,7 @@ const App = () => {
     const isHealthy = classificationResult === 'Normal';
     const classificationText = classificationResult.toUpperCase();
     
-    // Los colores ahora dependen de la clave 'color' en resultData
+    // Configuración de colores dinámica
     const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
     const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
     const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
@@ -263,6 +249,7 @@ const App = () => {
 
 
         <div className="grid md:grid-cols-2 gap-6 items-start">
+          {/* PRIMERA COLUMNA: Radiografía del Paciente */}
           <div className="flex flex-col items-center space-y-3">
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
             <img
@@ -272,16 +259,23 @@ const App = () => {
             />
           </div>
 
+          {/* SEGUNDA COLUMNA: Imágenes de Ejemplo */}
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Hallazgos Clave de la IA:</h3>
-            <ul className="space-y-2">
-              {data.examples.map((example) => (
-                <li key={example.id} className={`flex items-center p-3 rounded-lg shadow-sm border border-gray-200 ${data.color === "green" ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <span className={`w-2 h-2 rounded-full mr-3 ${data.color === "green" ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  <p className="text-sm font-medium text-gray-700">{example.label}</p>
-                </li>
-              ))}
-            </ul>
+            <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
+            
+            <div className="grid grid-cols-3 gap-2">
+                {Object.keys(EXAMPLE_IMAGES).map((key) => (
+                    <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm">
+                        <img 
+                            src={EXAMPLE_IMAGES[key]} 
+                            alt={`Ejemplo de ${key}`} 
+                            className="w-full h-auto object-cover rounded-md border-2 border-gray-100"
+                        />
+                        <p className="mt-1 text-xs font-medium text-gray-700">{key}</p>
+                    </div>
+                ))}
+            </div>
+
           </div>
         </div>
 
