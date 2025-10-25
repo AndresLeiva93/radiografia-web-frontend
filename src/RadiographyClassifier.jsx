@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 
-// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor
+// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor de Render
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
@@ -12,8 +12,7 @@ const STEPS = {
 
 // =================================================================
 // RUTAS DE IMÁGENES DE EJEMPLO
-// 🚨 CORRECCIÓN EXTENSIÓN: Usamos '.jpg' (tal como están tus archivos en /public/images/)
-// La ruta es ABSOLUTA y apunta a /public/images/
+// 🚨 Confirma la extensión '.jpg' y la ruta absoluta '/images/'
 // =================================================================
 const EXAMPLE_IMAGES = {
   'Normal': '/images/Normal.jpg', 
@@ -21,7 +20,7 @@ const EXAMPLE_IMAGES = {
   'AOM': '/images/AOM.jpg',
 };
 
-// Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
+// Componente principal de la aplicación
 const App = () => {
   // ----------------------------------------------------
   // ESTADO
@@ -107,7 +106,7 @@ const App = () => {
     setError(null);
 
     const formData = new FormData();
-    // 🚨 CORRECCIÓN CLAVE: Usamos 'image' como clave para el backend (según el error 400 anterior)
+    // 🚨 Clave 'image' para el backend
     formData.append('image', file, file.name); 
 
     try {
@@ -123,7 +122,6 @@ const App = () => {
 
       const result = await response.json();
       
-      // Esperamos que la clave de predicción sea 'prediccion' (o la que use tu API)
       const classification = result?.prediccion; 
 
       if (!classification || !resultData[classification]) {
@@ -261,20 +259,22 @@ const App = () => {
             />
           </div>
 
-          {/* 🚨 SEGUNDA COLUMNA: Renderizado de Imágenes de Ejemplo - Usa .jpg */}
+          {/* 🚨 SEGUNDA COLUMNA: Renderizado de Imágenes de Ejemplo - FORMATO VERTICAL */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
             
-            <div className="grid grid-cols-3 gap-2">
+            {/* 🚨 CAMBIO DE DISEÑO: Usamos flex-col y space-y-2 para apilarlas verticalmente */}
+            <div className="flex flex-col space-y-2"> 
                 {Object.keys(EXAMPLE_IMAGES).map((key) => (
-                    <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm">
+                    // Cada imagen ocupa una línea completa en la columna
+                    <div key={key} className="flex flex-row items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
                         <img 
-                            // Uso de la constante EXAMPLE_IMAGES que tiene la extensión .jpg
                             src={EXAMPLE_IMAGES[key]} 
                             alt={`Ejemplo de ${key}`} 
-                            className="w-full h-auto object-cover rounded-md border-2 border-gray-100"
+                            // Reducimos el ancho de la imagen y agregamos margen para el texto a la derecha
+                            className="w-1/3 max-w-[100px] h-auto object-cover rounded-md border-2 border-gray-100 mr-4"
                         />
-                        <p className="mt-1 text-xs font-medium text-gray-700">{key}</p>
+                        <p className="mt-1 text-sm font-medium text-gray-700">{key}</p>
                     </div>
                 ))}
             </div>
