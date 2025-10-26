@@ -1,38 +1,155 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { useAuth } from './AuthContext'; // 🚨 IMPORTANTE
-import Login from './Login'; // 🚨 IMPORTANTE
+import React, { useState, useCallback, useMemo, createContext, useContext, useEffect } from 'react';
+import { LogIn, LogOut, Upload, Loader, CheckCircle, X, Menu, Aperture } from 'lucide-react'; 
 
-// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor de Render
+// ----------------------------------------------------
+// 1. LÓGICA DE AUTENTICACIÓN Y CONTEXTO
+// ----------------------------------------------------
+
+// Contexto de Autenticación
+const AuthContext = createContext();
+
+// Hook para usar la autenticación
+const useAuth = () => useContext(AuthContext);
+
+// Proveedor de Autenticación (Simulación de sesión)
+const AuthProvider = ({ children }) => {
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [token, setToken] = useState(null); 
+    const [userName, setUserName] = useState('Médico de Prueba'); // Nombre de usuario de prueba
+
+    useEffect(() => {
+        const storedToken = 'fake-jwt-token-12345';
+        if (storedToken) {
+            setIsLoggedIn(true);
+            setToken(storedToken);
+        }
+    }, []);
+
+    const login = (password) => {
+        if (password === "medico123") { // Contraseña de prueba
+            const newToken = 'fake-jwt-token-' + Math.random().toString(36).substring(2, 15);
+            setToken(newToken);
+            setIsLoggedIn(true);
+            setUserName('Dr(a). Usuario');
+            return true;
+        }
+        return false;
+    };
+
+    const logout = () => {
+        setIsLoggedIn(false);
+        setToken(null);
+        setUserName(null);
+    };
+
+    const value = { isLoggedIn, login, logout, token, userName };
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Componente de Login (Integrado - Ahora como un card centrado)
+const Login = () => {
+    const { login } = useAuth();
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState(null);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setError(null);
+        if (login(password)) {
+            // Login exitoso
+        } else {
+            setError("Contraseña incorrecta. Contraseña de prueba: medico123");
+        }
+    };
+
+    return (
+        <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center border-t-4 border-indigo-600">
+            <LogIn className="w-10 h-10 text-indigo-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso Requerido</h2>
+            <p className="text-gray-500 mb-6">Introduce la contraseña para acceder a la herramienta IA.</p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <input
+                    type="password"
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                    required
+                />
+                {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
+                <button
+                    type="submit"
+                    className="w-full px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300"
+                >
+                    Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    );
+};
+
+
+// ----------------------------------------------------
+// 2. NAVBAR (Nuevo componente)
+// ----------------------------------------------------
+const Navbar = ({ isLoggedIn, logout, userName }) => {
+    return (
+        <header className="sticky top-0 z-10 bg-white shadow-md">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+                {/* Logo y Título */}
+                <div className="flex items-center space-x-2">
+                    <Aperture className="w-6 h-6 text-indigo-600" />
+                    <h1 className="text-xl font-bold text-gray-900">Oido IA Match</h1>
+                </div>
+
+                {/* Autenticación y Botones */}
+                {isLoggedIn ? (
+                    <div className="flex items-center space-x-4">
+                        <span className="text-sm font-medium text-gray-600 hidden sm:inline">Hola, {userName}</span>
+                        <button
+                            onClick={logout}
+                            className="flex items-center space-x-1 px-3 py-2 bg-red-500 text-white text-sm font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            <span className="hidden sm:inline">Cerrar Sesión</span>
+                        </button>
+                    </div>
+                ) : (
+                    <div className="text-sm font-medium text-gray-500">
+                        Inicia sesión para usar la herramienta.
+                    </div>
+                )}
+            </div>
+        </header>
+    );
+};
+
+
+// ----------------------------------------------------
+// 3. COMPONENTE DEL CLASIFICADOR (Lógica principal)
+// ----------------------------------------------------
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
 const STEPS = {
-  UPLOAD: 'upload',
-  PROCESSING: 'processing',
-  RESULT: 'result'
+    UPLOAD: 'upload',
+    PROCESSING: 'processing',
+    RESULT: 'result'
 };
 
 // Rutas de imágenes de ejemplo
 const EXAMPLE_IMAGES = {
-  'Normal': '/images/Normal.jpg', 
-  'AOE': '/images/AOE.jpg',
-  'AOM': '/images/AOM.jpg',
+    'Normal': '/images/Normal.jpg', 
+    'AOE': '/images/AOE.jpg',
+    'AOM': '/images/AOM.jpg',
 };
 
-// Componente principal de la aplicación
-const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
-    const { isLoggedIn, logout, token } = useAuth(); // 🚨 Usar el hook de autenticación
+// Componente que contiene toda la lógica y UI del clasificador
+const ClassifierUI = () => {
+    const { token, logout } = useAuth(); // Necesita token y logout
 
-    // Si no está logeado, mostrar solo el Login
-    if (!isLoggedIn) {
-        return <Login />;
-    }
-    
-    // El resto del código solo se ejecuta si el usuario está logeado
-    
-    // ----------------------------------------------------
     // ESTADO Y LÓGICA DEL CLASIFICADOR
-    // ----------------------------------------------------
     const [step, setStep] = useState(STEPS.UPLOAD);
     const [file, setFile] = useState(null); 
     const [previewUrl, setPreviewUrl] = useState(null); 
@@ -48,7 +165,7 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         },
         'AOE': {
             title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
+            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Esto podría manifestarse como inflamación o afectación del tejido blando externo. Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
             color: "orange",
         },
         'AOM': {
@@ -60,6 +177,8 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
     
     const processFile = (selectedFile) => {
         if (selectedFile && selectedFile.type.startsWith('image/')) {
+            if (previewUrl) URL.revokeObjectURL(previewUrl); 
+            
             setFile(selectedFile);
             setPreviewUrl(URL.createObjectURL(selectedFile));
             setError(null);
@@ -74,7 +193,6 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         processFile(e.target.files[0]);
     };
 
-    // (Otras funciones de Drag & Drop...)
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragOver(false);
@@ -107,7 +225,6 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         try {
             const response = await fetch(RENDER_API_URL, {
                 method: 'POST',
-                // 🚨 Enviar el Token en la cabecera (Esto lo hará seguro en el futuro)
                 headers: {
                     'Authorization': `Bearer ${token}` 
                 },
@@ -115,7 +232,6 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
             });
 
             if (response.status === 401) {
-                // Si la API devuelve 401 (No Autorizado)
                 throw new Error("Sesión expirada o no autorizada. Por favor, vuelve a iniciar sesión.");
             }
             if (!response.ok) {
@@ -140,17 +256,18 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
 
             if (err.message.includes("401")) {
                  displayError = "⚠️ Tu sesión ha expirado o no estás autorizado. Por favor, inicia sesión de nuevo.";
+                 logout(); 
             } else if (err.message.includes("Error HTTP: 404")) {
                  displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma que la ruta del servidor de Render es la correcta (debe ser /predict).";
             } else if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
-                displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor. Inténtalo de nuevo en 30 segundos.";
+                 displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor (Render). Inténtalo de nuevo en 30 segundos.";
             }
 
             setError(displayError);
             setStep(STEPS.UPLOAD); 
             setClassificationResult(null);
         }
-    }, [file, resultData, token]);
+    }, [file, resultData, token, logout]);
 
     const handleReset = () => {
         setStep(STEPS.UPLOAD);
@@ -163,9 +280,8 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         }
     };
     
-    // (Renderización de pasos omitida por brevedad, asume que está el código correcto)
+    // FUNCIONES DE RENDERIZADO
     const renderUploadStep = () => (
-        // ... Contenido de la carga de archivos
         <div className="flex flex-col items-center p-6 space-y-4">
             <div 
                 onDrop={handleDrop}
@@ -183,9 +299,7 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
                 />
                 ) : (
                 <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-800 font-semibold transition duration-150 ease-in-out text-center px-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
+                    <Upload className="w-8 h-8 mx-auto mb-2" />
                     <span className='text-sm sm:text-base'>Haz clic para seleccionar o arrastra una imagen aquí (JPG/PNG)</span>
                     <input id="file-upload" type="file" className="hidden" accept="image/jpeg,image/png" onChange={handleFileChange} />
                 </label>
@@ -193,7 +307,7 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
             </div>
 
             {error && (
-                <p className="text-sm font-medium text-red-600 bg-red-100 p-3 rounded-xl w-full text-center border border-red-300 shadow-sm">
+                <p className="text-sm font-medium text-red-700 bg-red-100 p-3 rounded-xl w-full text-center border border-red-300 shadow-sm">
                 {error}
                 </p>
             )}
@@ -203,7 +317,7 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
                 onClick={classifyImage}
                 className="w-full px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-[1.02] disabled:opacity-50"
                 >
-                🚀 Paso 2: Clasificar Radiografía
+                🚀 Paso 2: Clasificar Imagen
                 </button>
             )}
         </div>
@@ -211,9 +325,7 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
     
     const renderProcessingStep = () => (
         <div className="flex flex-col items-center justify-center p-8 space-y-6">
-            <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.93 8.93 0 0115 19H5M20 9V4M4 12a8 8 0 018-8v0a8 8 0 018 8v0a8 8 0 01-8 8v0a8 8 0 01-8-8z" />
-            </svg>
+            <Loader className="animate-spin h-10 w-10 text-indigo-600" />
             <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
             <p className="text-gray-600">Esto puede tomar unos segundos.</p>
         </div>
@@ -245,15 +357,18 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
                 </div>
 
                 <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
-                    <p className="text-sm">{data.description}</p>
+                    <p className="text-sm font-medium">{data.description}</p>
+                    <p className="mt-2 text-xs font-semibold text-gray-600">
+                        {isHealthy ? "" : "⚠️ ESTA HERRAMIENTA ES SÓLO DE APOYO. SE REQUIERE CONFIRMACIÓN MÉDICA."}
+                    </p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="flex flex-col items-center space-y-3">
-                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imagen Clasificada:</h3>
                         <img
                         src={previewUrl}
-                        alt="Radiografía Clasificada"
+                        alt="Imagen Clasificada"
                         className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
                         />
                     </div>
@@ -267,9 +382,9 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
                                     <img 
                                         src={EXAMPLE_IMAGES[key]} 
                                         alt={`Ejemplo de ${key}`} 
-                                        className="w-1/3 max-w-[100px] h-auto object-cover rounded-md border-2 border-gray-100 mr-4"
+                                        className="w-1/4 max-w-[100px] h-auto object-cover rounded-md border-2 border-gray-100 mr-4"
                                     />
-                                    <p className="mt-1 text-sm font-medium text-gray-700">{key}</p>
+                                    <p className="text-base font-bold text-gray-800">{key}</p>
                                 </div>
                             ))}
                         </div>
@@ -289,13 +404,13 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
 
     const renderCurrentStep = () => {
         switch (step) {
-          case STEPS.PROCESSING:
-            return renderProcessingStep();
-          case STEPS.RESULT:
-            return renderResultStep();
-          case STEPS.UPLOAD:
-          default:
-            return renderUploadStep();
+            case STEPS.PROCESSING:
+                return renderProcessingStep();
+            case STEPS.RESULT:
+                return renderResultStep();
+            case STEPS.UPLOAD:
+            default:
+                return renderUploadStep();
         }
     };
 
@@ -309,7 +424,7 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         }
         return (
             <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
-                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Imagen</span>
                 <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
                 <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
             </div>
@@ -318,34 +433,57 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
 
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
-            
-            <main className="w-full max-w-3xl">
-                {/* 🚨 Botón de Logout */}
-                <div className="flex justify-end w-full mb-4">
-                    <button
-                        onClick={logout}
-                        className="text-xs px-3 py-1 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
-                    >
-                        Cerrar Sesión
-                    </button>
-                </div>
-                {/* 🚨 Título y Párrafo Corregidos */}
-                <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">👂 Oido IA Match</h1>
-                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
+        <>
+            <p className="text-center text-gray-600 mb-8 text-lg hidden sm:block">Herramienta de apoyo al diagnóstico rápido para la detección de otitis.</p>
+            {getStepIndicator()}
+            <div className="bg-white rounded-2xl shadow-2xl transition-all duration-500 ease-in-out">
+                {renderCurrentStep()}
+            </div>
+        </>
+    );
+};
 
-                {getStepIndicator()}
 
-                <div className="bg-white rounded-2xl shadow-2xl transition-all duration-500 ease-in-out">
-                    {renderCurrentStep()}
+// ----------------------------------------------------
+// 4. ESTRUCTURA PRINCIPAL DE LA PÁGINA
+// ----------------------------------------------------
+const MainApplication = () => {
+    const { isLoggedIn, logout, userName } = useAuth();
+    
+    return (
+        <div className="min-h-screen bg-gray-100 flex flex-col font-inter">
+            {/* Navbar - Siempre visible */}
+            <Navbar isLoggedIn={isLoggedIn} logout={logout} userName={userName} />
+
+            {/* Contenido principal condicional */}
+            <main className="flex-grow flex flex-col items-center p-4">
+                <div className="w-full max-w-3xl flex-grow flex flex-col items-center pt-8">
+                    {isLoggedIn ? (
+                        <ClassifierUI />
+                    ) : (
+                        // Centrar el Login en la pantalla
+                        <div className="flex-grow flex items-center justify-center w-full">
+                            <Login />
+                        </div>
+                    )}
                 </div>
             </main>
             
-            <footer className="mt-8 text-sm text-gray-500">
-                Desarrollado con React y Tailwind CSS
+            <footer className="py-4 text-sm text-gray-500 text-center border-t border-gray-200">
+                Desarrollado con React y Tailwind CSS para apoyo diagnóstico.
             </footer>
         </div>
     );
-};
+}
+
+
+// ----------------------------------------------------
+// 5. COMPONENTE RAÍZ
+// ----------------------------------------------------
+const App = () => (
+    <AuthProvider>
+        <MainApplication />
+    </AuthProvider>
+);
 
 export default App;
