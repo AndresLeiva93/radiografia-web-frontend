@@ -334,9 +334,34 @@ const ClassifierApp = () => {
         🚀 Paso 2: Clasificar Radiografía
         </button>
       )}
-      
-      {/* Las imágenes de ejemplo se han movido a la vista de resultados */}
 
+      {/* Bloque de imágenes de ejemplo en la vista de carga (como estaba originalmente) */}
+      {!file && (
+          <div className="text-sm text-gray-500 w-full pt-2">
+            <h3 className="font-semibold text-gray-700 mb-2">Imágenes de Ejemplo (Usar para Prueba Rápida):</h3>
+            <div className="flex justify-between space-x-2">
+                {Object.keys(EXAMPLE_IMAGES).map(key => (
+                    <button 
+                        key={key} 
+                        onClick={() => {
+                            // Simulación de carga de archivo para la prueba
+                            const mockFile = new File([], `${key}.png`, { type: 'image/png' });
+                            processFile(mockFile);
+                            setPreviewUrl(EXAMPLE_IMAGES[key]); // Usar la URL de placeholder como preview
+                        }}
+                        className="flex flex-col items-center p-2 border border-gray-300 rounded-lg hover:bg-gray-200 transition duration-150 w-1/3 text-xs"
+                    >
+                        <img 
+                            src={EXAMPLE_IMAGES[key]} 
+                            alt={key} 
+                            className="w-10 h-10 object-contain rounded-md mb-1"
+                        />
+                        <span className="font-medium text-gray-700">{key}</span>
+                    </button>
+                ))}
+            </div>
+          </div>
+      )}
     </div>
   );
     
@@ -386,34 +411,6 @@ const ClassifierApp = () => {
             className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
           />
         </div>
-
-        {/* --- INICIO: EJEMPLOS DE REFERENCIA (MOVIMIENTO SOLICITADO) --- */}
-        <div className="text-sm text-gray-500 w-full pt-2 border-t pt-6 border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-3 text-lg text-center">Ejemplos de Referencia:</h3>
-            <div className="flex justify-around space-x-2">
-                {Object.keys(EXAMPLE_IMAGES).map(key => {
-                    const exampleData = resultData[key];
-                    const borderColor = exampleData.color === "green" ? "border-green-500" : exampleData.color === "red" ? "border-red-500" : "border-orange-500";
-                    return (
-                        <div 
-                            key={key} 
-                            className={`flex flex-col items-center p-2 border-2 ${borderColor} rounded-xl bg-white shadow-sm w-1/3 text-center`}
-                        >
-                            <img 
-                                src={EXAMPLE_IMAGES[key]} 
-                                alt={key} 
-                                className="w-16 h-16 object-contain rounded-md mb-1 border-b pb-1"
-                            />
-                            <span className="font-extrabold text-xs mt-1 uppercase" style={{ color: exampleData.color === "green" ? '#10B981' : exampleData.color === "red" ? '#EF4444' : '#F97316' }}>
-                                {key}
-                            </span>
-                            <span className="text-[10px] text-gray-500 mt-1 leading-tight">{exampleData.title.split(":")[1].trim()}</span>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-        {/* --- FIN: EJEMPLOS DE REFERENCIA --- */}
 
         <button
           onClick={handleReset}
