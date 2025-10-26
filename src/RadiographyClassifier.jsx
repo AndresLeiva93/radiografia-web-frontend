@@ -1,34 +1,151 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, createContext, useContext, useEffect } from 'react';
 
-// --- SIMULACIÓN (MOCK) DE AUTHENTICACIÓN ---
-// Reemplazamos los hooks y componentes externos para cumplir con el requisito de un solo archivo (MVP).
-// Esto simula que el usuario está "loggeado" y proporciona un token simple,
-// cumpliendo con el requisito mínimo del encabezado para la API de Render sin usar Firebase.
+// ==========================================================
+// 1. LÓGICA DE AUTENTICACIÓN (AuthContext.jsx consolidado)
+// ==========================================================
 
-// Usamos las variables globales del entorno para crear un token de forma simple.
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : 'mock-session-token';
+// Usamos Firestore para el almacenamiento persistente de sesión en lugar de localStorage
+// Esto simula que el usuario está "loggeado" si el token global existe
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-const useAuth = () => {
-    // Simular un token simple (para el header de la API de Render)
-    const token = `mock_auth_token_${initialAuthToken.substring(0, 10)}`;
+// Creamos un token simple basado en el token inicial si existe
+const defaultToken = initialAuthToken ? `mock_auth_token_${initialAuthToken.substring(0, 10)}` : null;
 
-    return { 
-        isLoggedIn: true, // Para el MVP, siempre decimos que está loggeado
-        token: token,
-        // La función logout no hace nada, simplemente para satisfacer el botón en el Navbar
-        logout: () => { console.log("Simulación de Logout: La autenticación es estática en este MVP.") } 
+const AuthContext = createContext();
+
+const useAuth = () => useContext(AuthContext);
+
+const AuthProvider = ({ children }) => {
+    // Inicializar el token con el token global (simulación de sesión persistente en Canvas)
+    const [token, setToken] = useState(defaultToken);
+
+    // En un entorno real, aquí se usaría Firebase Authentication para iniciar sesión
+    // y obtener el token real. Para este ejemplo, simulamos el proceso.
+
+    // 2. Comprobar si está logeado (existe un token)
+    const isLoggedIn = !!token; 
+
+    // Función para Iniciar Sesión (simulada)
+    // En un entorno real, esta función haría una llamada a la API de login.
+    const login = (simulatedToken) => {
+        setToken(simulatedToken);
+        // Nota: En un entorno de React real, usarías localStorage o un sistema de estado más robusto.
     };
+
+    // FUNCIÓN CORREGIDA: Simplemente limpia el token
+    const logout = () => {
+        setToken(null);
+    };
+
+    const value = {
+        isLoggedIn,
+        token,
+        login,
+        logout
+    };
+
+    // Nota: El Proveedor debe envolver la lógica del App
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-const Login = () => (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <p className="text-xl text-indigo-600">Cargando aplicación de clasificación...</p>
-    </div>
-);
 
-// --- CLASIFICADOR DE RADIOGRAFÍA ---
+// ==========================================================
+// 2. COMPONENTE DE AUTENTICACIÓN (Login.jsx consolidado)
+// ==========================================================
+const AuthForm = ({ login }) => { 
+    // Estado para alternar entre Login (true) y Registro (false)
+    const [isLoginView, setIsLoginView] = useState(true); 
+    
+    // Estados del formulario
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
-// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor de Render
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        
+        // --- SIMULACIÓN DE LOGIN/REGISTRO ---
+        // Generamos un token simulado para la sesión
+        const simulatedToken = `user_session_${Date.now()}`;
+        
+        // Llamamos a la función login del contexto para establecer la sesión
+        login(simulatedToken); 
+        
+        // Limpiamos los campos (Opcional)
+        setEmail('');
+        setPassword('');
+    };
+
+    const toggleView = () => {
+        setIsLoginView(!isLoginView);
+    };
+
+    const title = isLoginView ? 'Iniciar Sesión' : 'Registrarse';
+    const buttonText = isLoginView ? 'Entrar' : 'Crear Cuenta';
+    const toggleText = isLoginView ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia Sesión';
+
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+            <div className="w-full max-w-sm bg-white rounded-xl shadow-2xl p-8 transition-all duration-300">
+                <div className="text-center mb-6">
+                    <h1 className="text-3xl font-extrabold text-indigo-700">👂 Oido IA Match</h1>
+                    <h2 className="text-xl mt-2 text-gray-700">{title}</h2>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            required
+                            placeholder="Correo Electrónico"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                        />
+                    </div>
+                    <div>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            required
+                            placeholder="Contraseña"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                        />
+                    </div>
+                    
+                    <div>
+                        <button
+                            type="submit"
+                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200"
+                        >
+                            {buttonText}
+                        </button>
+                    </div>
+                </form>
+
+                <div className="mt-6 text-center">
+                    <button 
+                        onClick={toggleView}
+                        type="button"
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 hover:underline transition duration-150"
+                    >
+                        {toggleText}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// ==========================================================
+// 3. CLASIFICADOR (RadiographyClassifier.jsx consolidado)
+// ==========================================================
+
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
@@ -46,354 +163,264 @@ const EXAMPLE_IMAGES = {
 };
 
 // Componente principal de la aplicación
-const App = () => {
-    // 🚨 Usar el hook de autenticación simulado
-    const { isLoggedIn, logout, token } = useAuth(); 
-
-    // Si no está logeado (aunque siempre lo estará en este mock), mostrar el Login simulado
-    if (!isLoggedIn) {
-        return <Login />;
-    }
+const RadiographyClassifier = () => {
+    // 🚨 USO DEL HOOK CORREGIDO: Obtenemos logout y token del contexto
+    const { logout, token } = useAuth();
     
-    // ----------------------------------------------------
-    // ESTADO Y LÓGICA DEL CLASIFICADOR (Código que quieres mantener)
-    // ----------------------------------------------------
-    const [step, setStep] = useState(STEPS.UPLOAD);
-    const [file, setFile] = useState(null); 
-    const [previewUrl, setPreviewUrl] = useState(null); 
-    const [classificationResult, setClassificationResult] = useState(null); 
+    // Estados de la aplicación
+    const [currentStep, setCurrentStep] = useState(STEPS.UPLOAD);
+    const [file, setFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState('');
+    const [apiResponse, setApiResponse] = useState(null);
     const [error, setError] = useState(null);
-    const [isDragOver, setIsDragOver] = useState(false); 
 
-    const resultData = useMemo(() => ({
-        'Normal': {
-            title: "Diagnóstico: Oído Medio Sano (Normal)",
-            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Esto indica una baja probabilidad de patología en la región analizada.",
-            color: "green",
-        },
-        'AOE': {
-            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
-            color: "orange",
-        },
-        'AOM': {
-            title: "Diagnóstico: Otitis Media Aguda (AOM)",
-            description: "El modelo de IA detectó opacidades y/o irregularidades, altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
-            color: "red",
-        }
-    }), []);
-    
-    const processFile = (selectedFile) => {
+    // Manejar la carga de archivos
+    const handleFileChange = useCallback((event) => {
+        const selectedFile = event.target.files[0];
         if (selectedFile && selectedFile.type.startsWith('image/')) {
             setFile(selectedFile);
-            // Revocar URL anterior para evitar pérdidas de memoria
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
             setPreviewUrl(URL.createObjectURL(selectedFile));
             setError(null);
         } else {
-            setError("Tipo de archivo no válido. Por favor, sube una imagen (JPG/PNG).");
             setFile(null);
-            setPreviewUrl(null);
+            setPreviewUrl('');
+            setError("Por favor, sube un archivo de imagen válido (JPEG, PNG).");
         }
-    };
+    }, []);
 
-    const handleFileChange = (e) => {
-        processFile(e.target.files[0]);
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragOver(false);
-        const files = e.dataTransfer.files;
-        if (files.length) {
-          processFile(files[0]);
-        }
-    };
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragOver(true);
-    };
-    const handleDragLeave = () => {
-        setIsDragOver(false);
-    };
-
-
-    const classifyImage = useCallback(async () => {
+    // Enviar a la API
+    const handleUpload = useCallback(async () => {
         if (!file) {
-          setError("Por favor, sube una imagen primero.");
-          return;
+            setError("Debes seleccionar una imagen para clasificar.");
+            return;
         }
 
-        setStep(STEPS.PROCESSING);
+        setCurrentStep(STEPS.PROCESSING);
         setError(null);
+        setApiResponse(null);
 
         const formData = new FormData();
-        formData.append('image', file, file.name); 
+        formData.append('image', file);
 
         try {
-            // Implementar un mecanismo de reintento simple para manejar fallas transitorias de red
-            const MAX_RETRIES = 3;
-            let lastError = null;
-            let response = null;
+            // Nota: El header de Authorization con el token simulado
+            const response = await fetch(RENDER_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData,
+            });
 
-            for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-                try {
-                    response = await fetch(RENDER_API_URL, {
-                        method: 'POST',
-                        headers: {
-                            // 🚨 Mantenemos el token para autorizar la llamada a la API de Render
-                            'Authorization': `Bearer ${token}` 
-                        },
-                        body: formData,
-                    });
-
-                    if (response.ok) {
-                        break; // Salir si la respuesta es exitosa
-                    } else if (response.status === 401) {
-                        throw new Error("Sesión expirada o no autorizada (Código 401).");
-                    } else if (attempt === MAX_RETRIES - 1) {
-                        throw new Error(`Fallo en la conexión después de ${MAX_RETRIES} intentos. Estado: ${response.status}`);
-                    }
-                } catch (err) {
-                    lastError = err;
-                    if (err.message.includes("401")) throw err; 
-                    console.warn(`Intento ${attempt + 1} fallido. Reintentando en ${Math.pow(2, attempt)}s...`);
-                    // Espera exponencial
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-                }
-            }
-            
             if (!response.ok) {
-                throw new Error(lastError.message || `Error HTTP: ${response.status}.`);
+                // Manejo de errores basado en el estado HTTP
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `Error de servidor: ${response.status}`);
             }
-            
-            const result = await response.json();
-            const classification = result?.prediccion; 
 
-            if (!classification || !resultData[classification]) {
-                throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
-            }
-            
-            setClassificationResult(classification);
-            setStep(STEPS.RESULT);
+            const data = await response.json();
+            setApiResponse(data);
+            setCurrentStep(STEPS.RESULT);
 
         } catch (err) {
-            console.error("Error en la clasificación:", err);
-            
-            let displayError = `Error: ${err.message}.`;
-
-            if (err.message.includes("401")) {
-                 displayError = "⚠️ Tu sesión ha expirado o no estás autorizado. Por favor, reinicia la sesión.";
-            } else if (err.message.includes("Error HTTP: 404")) {
-                 displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma la ruta del servidor de Render.";
-            } else if (err.message.includes("Fallo en la conexión") || err.message.includes("failed to fetch")) {
-                displayError = "⚠️ Falló la conexión. El servidor de IA podría estar inactivo o inaccesible.";
-            }
-
-            setError(displayError);
-            setStep(STEPS.UPLOAD); 
-            setClassificationResult(null);
+            console.error("Error al clasificar la imagen:", err);
+            setError(`Fallo en la comunicación con la IA. Mensaje: ${err.message || 'Error desconocido'}`);
+            setCurrentStep(STEPS.UPLOAD); 
         }
-    }, [file, resultData, token]);
 
-    const handleReset = () => {
-        setStep(STEPS.UPLOAD);
+    }, [file, token]);
+    
+    // Reiniciar proceso
+    const handleReset = useCallback(() => {
         setFile(null);
-        setClassificationResult(null);
+        setPreviewUrl('');
+        setApiResponse(null);
         setError(null);
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-            setPreviewUrl(null);
-        }
-    };
-    
-    // --- Lógica de Renderización ---
+        setCurrentStep(STEPS.UPLOAD);
+    }, []);
 
-    const renderUploadStep = () => (
-        <div className="flex flex-col items-center p-6 space-y-4">
-          <div 
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            className={`flex items-center justify-center w-full h-48 border-2 border-dashed rounded-xl transition-colors duration-200 
-            ${isDragOver ? 'border-indigo-600 bg-indigo-100' : 'border-indigo-400 bg-indigo-50'}
-            `}
-          >
-            {previewUrl ? (
-            <img 
-              src={previewUrl} 
-              alt="Radiografía Previa" 
-              className="h-full w-auto max-h-44 object-contain rounded-lg shadow-lg"
-            />
-            ) : (
-            <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-800 font-semibold transition duration-150 ease-in-out text-center px-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              <span className='text-sm sm:text-base'>Haz clic para seleccionar o arrastra una imagen aquí (JPG/PNG)</span>
-              <input id="file-upload" type="file" className="hidden" accept="image/jpeg,image/png" onChange={handleFileChange} />
-            </label>
-            )}
-          </div>
-    
-          {error && (
-            <p className="text-sm font-medium text-red-600 bg-red-100 p-3 rounded-xl w-full text-center border border-red-300 shadow-sm">
-            {error}
-            </p>
-          )}
-    
-          {file && (
-            <button
-              onClick={classifyImage}
-              className="w-full px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-[1.02] disabled:opacity-50"
-            >
-            🚀 Paso 2: Clasificar Radiografía
-            </button>
-          )}
+    // Renderizado del Indicador de Paso
+    const getStepIndicator = useMemo(() => () => {
+        const steps = [
+            { key: STEPS.UPLOAD, label: '1. Cargar Imagen' },
+            { key: STEPS.PROCESSING, label: '2. Procesando IA' },
+            { key: STEPS.RESULT, label: '3. Resultado' },
+        ];
 
-          {/* Bloque de imágenes de ejemplo */}
-          {!file && (
-              <div className="text-sm text-gray-500 w-full pt-2">
-                <h3 className="font-semibold text-gray-700 mb-2">Imágenes de Ejemplo:</h3>
-                <div className="flex justify-between space-x-2">
-                    {Object.keys(EXAMPLE_IMAGES).map(key => (
-                        <button 
-                            key={key} 
-                            onClick={() => {
-                                const mockFile = new File([], `${key}.png`, { type: 'image/png' });
-                                processFile(mockFile);
-                                setPreviewUrl(EXAMPLE_IMAGES[key]); 
-                            }}
-                            className="flex flex-col items-center p-2 border border-gray-300 rounded-lg hover:bg-gray-200 transition duration-150 w-1/3 text-xs"
+        return (
+            <div className="flex justify-between items-center w-full max-w-sm mb-8">
+                {steps.map((step, index) => (
+                    <React.Fragment key={step.key}>
+                        <div 
+                            className={`flex flex-col items-center transition-opacity duration-300 ${step.key === currentStep ? 'opacity-100' : 'opacity-50'}`}
                         >
-                            <img 
-                                src={EXAMPLE_IMAGES[key]} 
-                                alt={key} 
-                                className="w-10 h-10 object-contain rounded-md mb-1"
-                            />
-                            <span className="font-medium text-gray-700">{key}</span>
-                        </button>
-                    ))}
+                            <div 
+                                className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-white transition-all duration-300 ${
+                                    index <= steps.findIndex(s => s.key === currentStep) 
+                                        ? 'bg-indigo-600 shadow-md' 
+                                        : 'bg-gray-300'
+                                }`}
+                            >
+                                {index + 1}
+                            </div>
+                            <span className="text-xs mt-1 text-center text-gray-700">{step.label}</span>
+                        </div>
+                        {index < steps.length - 1 && (
+                            <div className={`flex-1 h-0.5 mx-2 transition-colors duration-300 ${
+                                index < steps.findIndex(s => s.key === currentStep) 
+                                    ? 'bg-indigo-400' 
+                                    : 'bg-gray-300'
+                            }`}></div>
+                        )}
+                    </React.Fragment>
+                ))}
+            </div>
+        );
+    }, [currentStep]);
+
+    // Componente de Carga de Archivo (Paso 1)
+    const renderUploadStep = () => (
+        <div className="p-8 space-y-6">
+            <h3 className="text-xl font-semibold text-gray-800 text-center">Clasificador de Otitis</h3>
+            
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm" role="alert">
+                    <span className="block sm:inline">{error}</span>
                 </div>
-              </div>
-          )}
-        </div>
-      );
-    
-    const renderProcessingStep = () => (
-        <div className="flex flex-col items-center justify-center p-8 space-y-6">
-          <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.93 8.93 0 0115 19H5M20 9V4M4 12a8 8 0 018-8v0a8 8 0 018 8v0a8 8 0 01-8 8v0a8 8 0 01-8-8z" />
-          </svg>
-          <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
-          <p className="text-gray-600">Esto puede tomar unos segundos.</p>
+            )}
+            
+            <div className="border-4 border-dashed border-gray-300 p-8 rounded-xl flex flex-col items-center justify-center transition duration-300 hover:border-indigo-400 cursor-pointer">
+                <input 
+                    type="file" 
+                    id="image-upload" 
+                    onChange={handleFileChange} 
+                    accept="image/*" 
+                    className="hidden" 
+                />
+                <label htmlFor="image-upload" className="flex flex-col items-center cursor-pointer">
+                    <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <p className="mt-2 text-lg font-medium text-gray-600">
+                        Arrastra o haz click para subir una imagen de oído
+                    </p>
+                    <p className="text-sm text-gray-400">(JPEG, PNG)</p>
+                </label>
+            </div>
+
+            {previewUrl && (
+                <div className="flex flex-col items-center space-y-4">
+                    <h4 className="text-md font-medium text-gray-700">Imagen Seleccionada:</h4>
+                    <img src={previewUrl} alt="Previsualización" className="max-w-xs max-h-40 rounded-lg shadow-lg border border-gray-200" />
+                    <button
+                        onClick={handleUpload}
+                        className="flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-xl text-base font-semibold text-white bg-green-500 hover:bg-green-600 transition duration-200 w-full md:w-auto"
+                    >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Clasificar con IA
+                    </button>
+                </div>
+            )}
         </div>
     );
 
-    const renderResultStep = () => {
-        if (!classificationResult) return renderUploadStep();
+    // Componente de Procesamiento (Paso 2)
+    const renderProcessingStep = () => (
+        <div className="p-12 flex flex-col items-center justify-center">
+            <svg className="animate-spin h-10 w-10 text-indigo-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-lg font-medium text-gray-700">Analizando la imagen, por favor espera...</p>
+            <p className="text-sm text-gray-500 mt-1">Esto puede tardar unos segundos.</p>
+        </div>
+    );
 
-        const data = resultData[classificationResult];
-        const classificationText = classificationResult.toUpperCase();
-        const isHealthy = classificationResult === 'Normal';
-        
-        // Configuración de colores dinámica
-        const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
-        const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
-        const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
+    // Componente de Resultado (Paso 3)
+    const renderResultStep = () => {
+        if (!apiResponse) return null;
+
+        const sortedResults = Object.entries(apiResponse.predictions)
+            .sort(([, probA], [, probB]) => probB - probA);
+
+        const bestResult = sortedResults[0];
 
         return (
-            <div className="p-6 space-y-8">
-                <div className="text-center">
-                    <h2 className="text-2xl font-extrabold text-gray-900">
-                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
-                    </h2>
-                    
-                    <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
-                        {classificationText}
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3>
-                </div>
-
-                <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
-                    <p className="text-sm">{data.description}</p>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6 items-start">
-                    <div className="flex flex-col items-center space-y-3">
-                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
-                        <img
-                        src={previewUrl}
-                        alt="Radiografía Clasificada"
-                        className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
-                        />
+            <div className="p-8 space-y-8">
+                <h3 className="text-2xl font-bold text-center text-green-600">¡Clasificación Completa!</h3>
+                
+                <div className="flex flex-col md:flex-row md:space-x-8 items-start">
+                    {/* Imagen de Previsualización */}
+                    <div className="w-full md:w-1/3 flex flex-col items-center mb-6 md:mb-0">
+                        <h4 className="text-lg font-semibold text-gray-700 mb-2">Imagen Analizada:</h4>
+                        <img src={previewUrl} alt="Previsualización" className="max-w-full h-auto rounded-lg shadow-xl border-4 border-gray-100" />
                     </div>
 
-                    <div className="space-y-3">
-                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
+                    {/* Resultados de la IA */}
+                    <div className="w-full md:w-2/3">
+                        <h4 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Probabilidades de Diagnóstico:</h4>
                         
-                        <div className="flex flex-col space-y-2"> 
-                            {Object.keys(EXAMPLE_IMAGES).map((key) => (
-                                <div key={key} className="flex flex-row items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
-                                    <img 
-                                        src={EXAMPLE_IMAGES[key]} 
-                                        alt={`Ejemplo de ${key}`} 
-                                        className="w-1/3 max-w-[100px] h-auto object-cover rounded-md border-2 border-gray-100 mr-4"
-                                    />
-                                    <p className="mt-1 text-sm font-medium text-gray-700">{key}</p>
+                        {/* Resultado Principal */}
+                        <div className={`p-4 rounded-xl shadow-lg mb-4 ${bestResult[0] === 'Normal' ? 'bg-green-100 border-green-400' : 'bg-red-100 border-red-400'} border-l-4`}>
+                            <h5 className="text-xl font-extrabold text-gray-900 flex items-center">
+                                <span className="mr-3 text-2xl">{bestResult[0] === 'Normal' ? '✅' : '⚠️'}</span>
+                                Clasificación más probable: {bestResult[0]}
+                            </h5>
+                            <p className="text-4xl font-bold mt-2">
+                                {(bestResult[1] * 100).toFixed(2)}%
+                            </p>
+                        </div>
+                        
+                        {/* Otras Probabilidades */}
+                        <div className="space-y-3">
+                            {sortedResults.map(([label, probability]) => (
+                                <div key={label} className="flex items-center">
+                                    <span className="w-16 font-medium text-gray-700">{label}:</span>
+                                    <div className="flex-1 bg-gray-200 rounded-full h-3">
+                                        <div 
+                                            className={`h-3 rounded-full transition-all duration-500 ${label === bestResult[0] ? 'bg-indigo-500' : 'bg-gray-400'}`} 
+                                            style={{ width: `${(probability * 100).toFixed(2)}%` }}
+                                        ></div>
+                                    </div>
+                                    <span className="ml-3 text-sm font-semibold text-gray-800 w-12 text-right">
+                                        {(probability * 100).toFixed(1)}%
+                                    </span>
                                 </div>
                             ))}
                         </div>
-
                     </div>
                 </div>
 
-                <button
-                    onClick={handleReset}
-                    className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.01]"
-                >
-                    Reiniciar Clasificación
-                </button>
+                {/* Botón de reinicio */}
+                <div className="flex justify-center pt-4 border-t mt-6">
+                    <button
+                        onClick={handleReset}
+                        className="flex items-center px-6 py-3 border border-transparent rounded-lg shadow-md text-base font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition duration-200"
+                    >
+                        Nueva Clasificación
+                    </button>
+                </div>
             </div>
         );
     };
 
+    // Renderiza el paso actual
     const renderCurrentStep = () => {
-        switch (step) {
-          case STEPS.PROCESSING:
-            return renderProcessingStep();
-          case STEPS.RESULT:
-            return renderResultStep();
-          case STEPS.UPLOAD:
-          default:
-            return renderUploadStep();
+        switch (currentStep) {
+            case STEPS.UPLOAD:
+                return renderUploadStep();
+            case STEPS.PROCESSING:
+                return renderProcessingStep();
+            case STEPS.RESULT:
+                return renderResultStep();
+            default:
+                return null;
         }
     };
-
-    const getStepIndicator = () => {
-        let currentStep;
-        switch (step) {
-            case STEPS.UPLOAD: currentStep = 1; break;
-            case STEPS.PROCESSING: currentStep = 2; break;
-            case STEPS.RESULT: currentStep = 3; break;
-            default: currentStep = 1;
-        }
-        return (
-            <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
-                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
-                <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
-                <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
-            </div>
-        );
-    };
-
 
     return (
-        <div className="min-h-screen bg-gray-100 font-inter">
+        <div className="min-h-screen bg-gray-100 font-sans flex flex-col items-center">
             
-            {/* 🚨 NAVBAR SOLICITADO */}
-            <nav className="bg-white shadow-lg sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="w-full bg-white shadow-lg sticky top-0 z-10">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Título / Logo */}
                         <div className="flex-shrink-0">
@@ -401,9 +428,9 @@ const App = () => {
                                 👂 Oido IA Match
                             </h1>
                         </div>
-                        {/* Botón de Logout (usa la función simulada) */}
+                        {/* Botón de Logout que llama a la función corregida */}
                         <button
-                            onClick={logout}
+                            onClick={logout} // <--- ESTO AHORA FUNCIONA
                             className="text-sm px-4 py-2 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
                         >
                             Cerrar Sesión
@@ -430,4 +457,31 @@ const App = () => {
     );
 };
 
-export default App;
+
+// ==========================================================
+// 4. COMPONENTE PRINCIPAL (Reemplaza index.jsx)
+// ==========================================================
+// El componente principal que se exporta y usa el proveedor de autenticación.
+const App = () => {
+    // Aquí el Provider puede usar el estado del token
+    const { isLoggedIn, login } = useAuth();
+    
+    if (!isLoggedIn) {
+        // CORRECCIÓN: Si no está logeado, mostramos el formulario de autenticación
+        return <AuthForm login={login} />;
+    }
+
+    // Si está logeado, mostramos la aplicación principal (Clasificador)
+    return <RadiographyClassifier />;
+};
+
+
+// Exportamos App envuelto en AuthProvider para que RadiographyClassifier y AuthForm
+// puedan usar el contexto de autenticación.
+const RootApp = () => (
+    <AuthProvider>
+        <App />
+    </AuthProvider>
+);
+
+export default RootApp;
