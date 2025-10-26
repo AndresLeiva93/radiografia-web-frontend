@@ -326,8 +326,8 @@ const App = () => {
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
       
       <main className="w-full max-w-3xl">
-        <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">🩺 Clasificador de Imágenes Médicas IA</h1>
-        <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido de Otitis Media.</p>
+        <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">👂 Oido IA Match</h1>
+        <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
 
         {getStepIndicator()}
 
