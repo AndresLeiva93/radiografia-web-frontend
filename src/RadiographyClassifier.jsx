@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 // Importamos los iconos de lucide-react (asumiendo que están disponibles en el entorno)
-import { Upload, Cpu, CheckCircle, RotateCcw, LogIn, User } from 'lucide-react';
+import { Upload, Cpu, CheckCircle, RotateCcw, User } from 'lucide-react';
 
 // Nota: La URL de la API se mantiene codificada aquí para el entorno de prueba.
 // En un proyecto real, se usaría una variable de entorno.
@@ -22,6 +22,7 @@ const STEPS = {
  * Simula la ubicación para futuras funcionalidades de Login/Usuario.
  */
 const AuthPlaceholder = () => (
+  // El diseño utiliza flexbox y clases de Tailwind para ubicarse en la esquina.
   <div className="flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition duration-150 cursor-pointer p-2 rounded-lg hover:bg-indigo-50">
     {/* Utilizamos el icono de Usuario como marcador de posición */}
     <User className="w-5 h-5" />
@@ -34,6 +35,7 @@ const AuthPlaceholder = () => (
  * Contiene el título de la aplicación y el componente de autenticación.
  */
 const Navbar = () => (
+  // La clase 'fixed top-0' y 'z-10' asegura que la barra permanezca visible arriba.
   <header className="fixed top-0 left-0 w-full bg-white shadow-md z-10">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
       {/* Título Principal y Logo */}
@@ -182,6 +184,7 @@ const App = () => {
     formData.append('file', file);
 
     try {
+      // Intentar la conexión con el servidor
       const response = await fetch(RENDER_API_URL, {
         method: 'POST',
         body: formData,
