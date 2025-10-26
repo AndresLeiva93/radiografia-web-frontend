@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-// Importamos los iconos de lucide-react (asumiendo que están disponibles en el entorno)
-import { Upload, Cpu, CheckCircle, RotateCcw, User } from 'lucide-react';
+// Importamos los iconos necesarios para la barra de navegación y los pasos
+import { Upload, Cpu, CheckCircle, User } from 'lucide-react'; 
 
 // Nota: La URL de la API se mantiene codificada aquí para el entorno de prueba.
-// En un proyecto real, se usaría una variable de entorno.
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/classify";
 
 // Constantes de Estado
@@ -19,28 +18,25 @@ const STEPS = {
 
 /**
  * Componente Placeholder para el área de Autenticación.
- * Simula la ubicación para futuras funcionalidades de Login/Usuario.
  */
 const AuthPlaceholder = () => (
-  // El diseño utiliza flexbox y clases de Tailwind para ubicarse en la esquina.
   <div className="flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition duration-150 cursor-pointer p-2 rounded-lg hover:bg-indigo-50">
-    {/* Utilizamos el icono de Usuario como marcador de posición */}
     <User className="w-5 h-5" />
     <span className="font-semibold text-sm hidden sm:inline">Iniciar Sesión / Usuario</span>
   </div>
 );
 
 /**
- * Componente de la Barra de Navegación Superior.
- * Contiene el título de la aplicación y el componente de autenticación.
+ * Componente de la Barra de Navegación Superior (Navbar).
  */
 const Navbar = () => (
-  // La clase 'fixed top-0' y 'z-10' asegura que la barra permanezca visible arriba.
-  <header className="fixed top-0 left-0 w-full bg-white shadow-md z-10">
+  // Navbar fijo y con sombra para destacar
+  <header className="fixed top-0 left-0 w-full bg-white shadow-lg z-10">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
       {/* Título Principal y Logo */}
       <div className="flex items-center space-x-3">
-        <Cpu className="w-7 h-7 text-indigo-600" />
+        {/* Usamos el icono CPU de Lucide para el logo */}
+        <Cpu className="w-7 h-7 text-indigo-600" /> 
         <h1 className="text-xl font-extrabold text-gray-900 hidden sm:block">
           Clasificador de Radiografías IA
         </h1>
@@ -59,8 +55,281 @@ const Navbar = () => (
 // LÓGICA DE LA APLICACIÓN
 // ----------------------------------------------------
 
-// Componente para manejar la visualización del estado (barra de progreso)
-const StepIndicator = ({ step }) => {
+// Componente principal de la aplicación, exportado como 'App'
+const App = () => {
+  // ----------------------------------------------------
+  // ESTADO
+  // ----------------------------------------------------
+  const [step, setStep] = useState(STEPS.UPLOAD);
+  const [file, setFile] = useState(null); // Archivo subido por el usuario
+  const [previewUrl, setPreviewUrl] = useState(null); // URL de la imagen para previsualización
+  const [classificationResult, setClassificationResult] = useState(null); // Resultado de la IA
+  const [error, setError] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false); 
+
+  // ----------------------------------------------------
+  // DATOS Y DESCRIPCIONES (¡Mantenidos igual!)
+  // ----------------------------------------------------
+  
+  const resultData = useMemo(() => ({
+    Sano: {
+      title: "Diagnóstico: Oído Medio Sano",
+      description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis media. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados para un oído saludable. Esto indica una baja probabilidad de patología en la región analizada.",
+      color: "green",
+      examples: [
+        { id: 1, label: 'Estructura Ósea Normal y Definida' },
+        { id: 2, label: 'Cavidad Aérea del Oído Despejada' },
+        { id: 3, label: 'Ausencia de Opacidades y Fluidos' },
+      ],
+    },
+    Enfermo: {
+      title: "Diagnóstico: Indicativo de Otitis Media",
+      description: "El modelo de IA detectó opacidades, llenado anómalo y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de un proceso inflamatorio o infeccioso (otitis media). Se recomienda encarecidamente la revisión y confirmación por un especialista médico (Otorrinolaringólogo).",
+      color: "red",
+      examples: [
+        { id: 4, label: 'Opacidad o Llenado Anormal (Pus/Líquido)' },
+        { id: 5, label: 'Engrosamiento de Mucosa y Contornos Irregulares' },
+        { id: 6, label: 'Posibles Niveles de Líquido/Aire Detectados' },
+      ],
+    }
+  }), []);
+
+  // ----------------------------------------------------
+  // LÓGICA DE MANEJO DE ARCHIVOS (¡Mantenida igual!)
+  // ----------------------------------------------------
+
+  const processFile = (selectedFile) => {
+    if (selectedFile && selectedFile.type.startsWith('image/')) {
+        setFile(selectedFile);
+        // RevokeObjectUrl para liberar memoria si ya había una previa
+        if (previewUrl) URL.revokeObjectURL(previewUrl); 
+        setPreviewUrl(URL.createObjectURL(selectedFile));
+        setError(null);
+    } else {
+        setError("Tipo de archivo no válido. Por favor, sube una imagen (JPG/PNG).");
+        setFile(null);
+        setPreviewUrl(null);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    processFile(e.target.files[0]);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length) {
+      processFile(files[0]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+  
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  // ----------------------------------------------------
+  // LÓGICA DE LA API (Clasificación) (¡Mantenida igual!)
+  // ----------------------------------------------------
+
+  const classifyImage = useCallback(async () => {
+    if (!file) {
+      setError("Por favor, sube una imagen primero.");
+      return;
+    }
+
+    setStep(STEPS.PROCESSING);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    try {
+      const response = await fetch(RENDER_API_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // La API debe devolver la clasificación en la clave 'classification'
+      const classification = result?.classification; 
+
+      if (!classification) {
+         throw new Error("Respuesta de API inválida: No se encontró la clave 'classification'.");
+      }
+      
+      const normalizedClassification = classification.toLowerCase().includes('sano') ? 'Sano' : 'Enfermo';
+
+      setClassificationResult(normalizedClassification);
+      setStep(STEPS.RESULT);
+
+    } catch (err) {
+      console.error("Error en la clasificación:", err);
+      
+      let displayError = `Error: ${err.message}. Verifica el formato de la API.`;
+
+      if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
+        displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor (CORS o 'Arranque en Frío'). Inténtalo de nuevo en 30 segundos.";
+      }
+
+      setError(displayError);
+      setStep(STEPS.UPLOAD); 
+      setClassificationResult(null);
+    }
+  }, [file]);
+
+  const handleReset = () => {
+    setStep(STEPS.UPLOAD);
+    setFile(null);
+    setClassificationResult(null);
+    setError(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+  };
+
+  // ----------------------------------------------------
+  // RENDERING (Vistas) (¡Mantenidas igual, con iconos ajustados!)
+  // ----------------------------------------------------
+
+  const renderUploadStep = () => (
+    <div className="flex flex-col items-center p-6 space-y-4">
+      <div 
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        className={`flex items-center justify-center w-full h-48 border-2 border-dashed rounded-xl transition-colors duration-200 
+          ${isDragOver ? 'border-indigo-600 bg-indigo-100' : 'border-indigo-400 bg-indigo-50'}
+        `}
+      >
+        {previewUrl ? (
+          <img 
+            src={previewUrl} 
+            alt="Radiografía Previa" 
+            className="h-full w-auto max-h-44 object-contain rounded-lg shadow-lg"
+          />
+        ) : (
+          <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-800 font-semibold transition duration-150 ease-in-out text-center px-4">
+            {/* Reemplazamos el SVG genérico por el icono Upload de Lucide */}
+            <Upload className="w-8 h-8 mx-auto mb-2" /> 
+            <span className='text-sm sm:text-base'>Haz clic para seleccionar o arrastra una imagen aquí (JPG/PNG)</span>
+            <input id="file-upload" type="file" className="hidden" accept="image/jpeg,image/png" onChange={handleFileChange} />
+          </label>
+        )}
+      </div>
+
+      {error && (
+        <p className="text-sm font-medium text-red-600 bg-red-100 p-3 rounded-xl w-full text-center border border-red-300 shadow-sm">
+          {error}
+        </p>
+      )}
+
+      {file && (
+        <button
+          onClick={classifyImage}
+          className="w-full px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-[1.02] disabled:opacity-50"
+        >
+          🚀 Paso 2: Clasificar Radiografía
+        </button>
+      )}
+    </div>
+  );
+
+  const renderProcessingStep = () => (
+    <div className="flex flex-col items-center justify-center p-8 space-y-6">
+      <Cpu className="animate-spin h-10 w-10 text-indigo-600" /> {/* Usamos CPU para el spinner */}
+      <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
+      <p className="text-gray-600">Esto puede tomar unos segundos. Por favor, espera.</p>
+    </div>
+  );
+
+  const renderResultStep = () => {
+    if (!classificationResult) return renderUploadStep();
+
+    const data = resultData[classificationResult];
+    const isHealthy = classificationResult === 'Sano';
+    const classificationText = classificationResult.toUpperCase();
+    
+    const statusColor = isHealthy ? "bg-green-500" : "bg-red-500";
+    const statusRing = isHealthy ? "ring-green-300" : "ring-red-300";
+    const detailColor = isHealthy ? "text-green-800 bg-green-50 border-green-200" : "text-red-800 bg-red-50 border-red-200";
+
+    return (
+      <div className="p-6 space-y-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-extrabold text-gray-900">
+            <span className={`${isHealthy ? 'text-green-600' : 'text-red-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
+          </h2>
+          
+          <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
+            {classificationText}
+          </div>
+          <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3>
+        </div>
+
+        <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
+            <p className="text-sm">{data.description}</p>
+        </div>
+
+
+        <div className="grid md:grid-cols-2 gap-6 items-start">
+          <div className="flex flex-col items-center space-y-3">
+            <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
+            <img
+              src={previewUrl}
+              alt="Radiografía Clasificada"
+              className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Hallazgos Clave de la IA:</h3>
+            <ul className="space-y-2">
+              {data.examples.map((example) => (
+                <li key={example.id} className={`flex items-center p-3 rounded-lg shadow-sm border border-gray-200 ${isHealthy ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <span className={`w-2 h-2 rounded-full mr-3 ${isHealthy ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  <p className="text-sm font-medium text-gray-700">{example.label}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <button
+          onClick={handleReset}
+          className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.01]"
+        >
+          Reiniciar Clasificación
+        </button>
+      </div>
+    );
+  };
+
+  const renderCurrentStep = () => {
+    switch (step) {
+      case STEPS.PROCESSING:
+        return renderProcessingStep();
+      case STEPS.RESULT:
+        return renderResultStep();
+      case STEPS.UPLOAD:
+      default:
+        return renderUploadStep();
+    }
+  };
+
+  const getStepIndicator = () => {
     let currentStep;
     switch (step) {
         case STEPS.UPLOAD: currentStep = 1; break;
@@ -69,6 +338,7 @@ const StepIndicator = ({ step }) => {
         default: currentStep = 1;
     }
 
+    // Usamos los iconos de Lucide en el indicador de pasos
     const stepItems = [
         { id: 1, name: 'Subir Radiografía', icon: Upload },
         { id: 2, name: 'Clasificar', icon: Cpu },
@@ -97,273 +367,14 @@ const StepIndicator = ({ step }) => {
             })}
         </div>
     );
-};
-
-
-// Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
-const App = () => {
-  // ----------------------------------------------------
-  // ESTADO
-  // ----------------------------------------------------
-  const [step, setStep] = useState(STEPS.UPLOAD);
-  const [file, setFile] = useState(null); // Archivo subido por el usuario
-  const [previewUrl, setPreviewUrl] = useState(null); // URL de la imagen para previsualización
-  const [classificationResult, setClassificationResult] = useState(null); // Resultado de la IA
-  const [error, setError] = useState(null);
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  // ----------------------------------------------------
-  // DATOS Y DESCRIPCIONES (para el resultado)
-  // ----------------------------------------------------
-
-  const resultData = useMemo(() => ({
-    Sano: {
-      title: "Diagnóstico: Oído Medio Sano",
-      description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis media. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. **Nota:** Este resultado es un apoyo diagnóstico y debe ser confirmado por un especialista.",
-      color: "text-green-600 bg-green-50 border-green-300",
-    },
-    'Otitis Media': {
-      title: "Diagnóstico: Posible Otitis Media",
-      description: "El modelo de IA ha identificado patrones compatibles con la otitis media. Se observan indicios de opacidad o engrosamiento en las cavidades, sugiriendo la presencia de inflamación o líquido. Se recomienda **confirmación inmediata por un médico especialista**.",
-      color: "text-red-600 bg-red-50 border-red-300",
-    },
-  }), []);
-
-  // ----------------------------------------------------
-  // MANEJO DE ARCHIVOS (Drag & Drop)
-  // ----------------------------------------------------
-
-  const handleFileChange = useCallback((selectedFile) => {
-    setError(null);
-    if (selectedFile && selectedFile.type.startsWith('image/')) {
-      setFile(selectedFile);
-      // Crea una URL local para la previsualización
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(selectedFile));
-      setStep(STEPS.UPLOAD); // Asegurarse de estar en el paso de subida
-    } else {
-      setFile(null);
-      setPreviewUrl(null);
-      setError("Por favor, suba un archivo de imagen válido (JPEG, PNG).");
-    }
-  }, [previewUrl]);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileChange(e.dataTransfer.files[0]);
-    }
-  }, [handleFileChange]);
-
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  // ----------------------------------------------------
-  // LLAMADA A LA API
-  // ----------------------------------------------------
-
-  const classifyImage = useCallback(async () => {
-    if (!file) {
-      setError("Debe seleccionar una imagen para clasificar.");
-      return;
-    }
-
-    setStep(STEPS.PROCESSING);
-    setError(null);
-    setClassificationResult(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      // Intentar la conexión con el servidor
-      const response = await fetch(RENDER_API_URL, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      setClassificationResult(result);
-      setStep(STEPS.RESULT);
-
-    } catch (err) {
-      console.error("Error al clasificar la imagen:", err);
-      setError(`Ocurrió un error al conectar con el modelo. Detalles: ${err.message}`);
-      setStep(STEPS.UPLOAD); // Volver al paso de subida en caso de error
-    }
-  }, [file]);
-
-  // ----------------------------------------------------
-  // MANEJO DEL REINICIO
-  // ----------------------------------------------------
-  const resetApp = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setStep(STEPS.UPLOAD);
-    setFile(null);
-    setPreviewUrl(null);
-    setClassificationResult(null);
-    setError(null);
-    setIsDragOver(false);
-  }, [previewUrl]);
-
-  // ----------------------------------------------------
-  // VISTAS POR PASO
-  // ----------------------------------------------------
-
-  const renderUploadStep = () => (
-    <div className="flex flex-col items-center">
-      <div
-        className={`w-full h-64 border-4 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition duration-300 ease-in-out 
-          ${isDragOver ? 'border-indigo-500 bg-indigo-50' : file ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-white hover:border-indigo-400'}`}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onClick={() => document.getElementById('file-input').click()}
-      >
-        <input
-          id="file-input"
-          type="file"
-          accept="image/*"
-          onChange={(e) => handleFileChange(e.target.files[0])}
-          className="hidden"
-        />
-        {file ? (
-          <p className="text-lg font-semibold text-green-700">Archivo listo: {file.name}</p>
-        ) : (
-          <>
-            <Upload className="w-10 h-10 text-gray-500 mb-2" />
-            <p className="text-center text-gray-600 font-medium">
-              Arrastra y suelta aquí tu imagen o haz clic para seleccionar.
-            </p>
-            <p className="text-xs text-gray-500 mt-1">(Formatos: JPG, PNG)</p>
-          </>
-        )}
-      </div>
-
-      {previewUrl && (
-        <div className="mt-6 p-4 bg-white rounded-xl shadow-inner w-full max-w-sm">
-          <h3 className="text-md font-bold mb-3 text-gray-800 border-b pb-2">Previsualización</h3>
-          <img
-            src={previewUrl}
-            alt="Previsualización de Radiografía"
-            className="rounded-lg max-w-full h-auto shadow-lg border border-gray-200"
-          />
-        </div>
-      )}
-      
-      <button
-        onClick={classifyImage}
-        disabled={!file || step === STEPS.PROCESSING}
-        className={`mt-8 w-full px-6 py-3 rounded-xl text-white font-bold text-lg shadow-lg transform transition duration-150 ease-in-out
-          ${file && step !== STEPS.PROCESSING
-            ? 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-xl active:scale-95'
-            : 'bg-gray-400 cursor-not-allowed'}`}
-      >
-        <Cpu className="inline w-5 h-5 mr-2" />
-        Clasificar Imagen
-      </button>
-    </div>
-  );
-
-  const renderProcessingStep = () => (
-    <div className="flex flex-col items-center p-10 bg-white rounded-xl shadow-2xl">
-      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
-      <p className="text-xl font-semibold text-indigo-700">Analizando la radiografía...</p>
-      <p className="text-sm text-gray-500 mt-2">Esto puede tomar unos segundos mientras el modelo procesa la imagen.</p>
-    </div>
-  );
-
-  const renderResultStep = () => {
-    if (!classificationResult || !classificationResult.classification) {
-      return (
-        <div className="p-6 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded-lg shadow-lg">
-          <p className="font-bold">Resultado Inesperado</p>
-          <p>No se pudo obtener una clasificación clara del modelo. Intente con otra imagen.</p>
-          <button onClick={resetApp} className="mt-4 px-4 py-2 bg-yellow-500 text-white rounded-lg font-semibold hover:bg-yellow-600 transition">
-            <RotateCcw className="inline w-4 h-4 mr-1" />
-            Analizar Otra Imagen
-          </button>
-        </div>
-      );
-    }
-
-    const { classification, probability } = classificationResult;
-    const data = resultData[classification] || {
-      title: "Clasificación Desconocida",
-      description: "El modelo retornó una clase no mapeada.",
-      color: "text-gray-600 bg-gray-50 border-gray-300",
-    };
-    const probPercent = (probability * 100).toFixed(2);
-
-    return (
-      <div className="flex flex-col items-center">
-        <div className={`w-full p-8 rounded-2xl border-4 shadow-xl ${data.color}`}>
-          <h2 className={`text-3xl font-extrabold mb-3 ${data.color.split(' ')[0]}`}>
-            {data.title}
-          </h2>
-          <p className="text-md font-medium text-gray-700 mb-4">
-            **Confianza del Modelo:** {probPercent}%
-          </p>
-          <p className={`text-gray-600 border-t pt-4 mt-4 ${data.color.split(' ')[0].replace('text-', 'border-')}`}>
-            {data.description}
-          </p>
-        </div>
-        
-        {previewUrl && (
-            <div className="mt-6 p-4 bg-white rounded-xl shadow-lg w-full max-w-sm">
-                <h3 className="text-md font-bold mb-3 text-gray-800 border-b pb-2">Imagen Analizada</h3>
-                <img
-                    src={previewUrl}
-                    alt="Radiografía Clasificada"
-                    className="rounded-lg max-w-full h-auto border border-gray-200"
-                />
-            </div>
-        )}
-
-        <button 
-          onClick={resetApp} 
-          className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 transition duration-150 ease-in-out active:scale-95"
-        >
-          <RotateCcw className="inline w-5 h-5 mr-2" />
-          Analizar Otra Imagen
-        </button>
-      </div>
-    );
-  };
-
-  // ----------------------------------------------------
-  // RENDERIZADO PRINCIPAL
-  // ----------------------------------------------------
-
-  const renderContent = () => {
-    switch (step) {
-      case STEPS.UPLOAD:
-        return renderUploadStep();
-      case STEPS.PROCESSING:
-        return renderProcessingStep();
-      case STEPS.RESULT:
-        return renderResultStep();
-      default:
-        return renderUploadStep();
-    }
   };
 
 
   return (
-    <div className="min-h-screen bg-gray-100 font-inter pt-20"> {/* Añadimos padding superior para la Navbar fija */}
-      <Navbar /> {/* Incluimos la barra de navegación */}
+    // IMPORTANTE: Agregamos pt-20 (padding-top: 5rem) para desplazar el contenido principal hacia abajo
+    // y evitar que sea cubierto por la barra de navegación fija (Navbar).
+    <div className="min-h-screen bg-gray-100 font-inter pt-20"> 
+      <Navbar /> {/* Incluimos la barra de navegación fija */}
       
       <main className="w-full max-w-4xl mx-auto px-4 py-8">
         
@@ -378,7 +389,7 @@ const App = () => {
             <StepIndicator step={step} />
 
             {/* Contenido Principal por Paso */}
-            {renderContent()}
+            {renderCurrentStep()}
 
             {/* Mensaje de Error */}
             {error && (
