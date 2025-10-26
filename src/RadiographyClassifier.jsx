@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useMemo } from 'react';
-// Nota: La URL de la API se mantiene codificada aquí para el entorno de prueba.
-// En un proyecto real, se usaría una variable de entorno.
-const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; // URL corregida a /predict
+import { useAuth } from './AuthContext'; // 🚨 IMPORTANTE
+import Login from './Login'; // 🚨 IMPORTANTE
+
+// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor de Render
+const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
 const STEPS = {
@@ -10,299 +12,340 @@ const STEPS = {
   RESULT: 'result'
 };
 
-// Componente principal de la aplicación, exportado como 'App' para ser usado en index.jsx
-const App = () => {
-  // ----------------------------------------------------
-  // ESTADO
-  // ----------------------------------------------------
-  const [step, setStep] = useState(STEPS.UPLOAD);
-  const [file, setFile] = useState(null); // Archivo subido por el usuario
-  const [previewUrl, setPreviewUrl] = useState(null); // URL de la imagen para previsualización
-  const [classificationResult, setClassificationResult] = useState(null); // Resultado de la IA
-  const [error, setError] = useState(null);
-  const [isDragOver, setIsDragOver] = useState(false); 
+// Rutas de imágenes de ejemplo
+const EXAMPLE_IMAGES = {
+  'Normal': '/images/Normal.jpg', 
+  'AOE': '/images/AOE.jpg',
+  'AOM': '/images/AOM.jpg',
+};
 
-  // ----------------------------------------------------
-  // DATOS Y DESCRIPCIONES
-  // ----------------------------------------------------
-  
-  const resultData = useMemo(() => ({
-    Sano: {
-      title: "Diagnóstico: Oído Medio Sano",
-      description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis media. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados.",
-      color: "text-green-600",
-      icon: "✅"
-    },
-    'Otitis Media': {
-      title: "Diagnóstico: Otitis Media Detectada",
-      description: "El modelo de IA ha detectado opacificación o anomalías en el oído medio, indicativas de posible otitis media. Se recomienda la revisión por un especialista.",
-      color: "text-red-600",
-      icon: "⚠️"
-    },
-  }), []);
+// Componente principal de la aplicación
+const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
+    const { isLoggedIn, logout, token } = useAuth(); // 🚨 Usar el hook de autenticación
 
-  // ----------------------------------------------------
-  // MANEJADORES DE EVENTOS
-  // ----------------------------------------------------
-  
-  const handleFile = useCallback((selectedFile) => {
-    // 1. Validar que el archivo sea una imagen
-    if (!selectedFile || !selectedFile.type.startsWith('image/')) {
-        setError("Solo se permiten archivos de imagen (JPEG, PNG).");
-        return;
+    // Si no está logeado, mostrar solo el Login
+    if (!isLoggedIn) {
+        return <Login />;
     }
-    // 2. Limpiar errores y actualizar estados
-    setError(null);
-    setFile(selectedFile);
     
-    // 3. Crear URL de previsualización
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl); // Limpia la URL anterior
-    }
-    const newPreviewUrl = URL.createObjectURL(selectedFile);
-    setPreviewUrl(newPreviewUrl);
+    // El resto del código solo se ejecuta si el usuario está logeado
     
-    // 4. Cambiar al paso de UPLOAD (por si venía de RESULT)
-    setStep(STEPS.UPLOAD);
-  }, [previewUrl]);
+    // ----------------------------------------------------
+    // ESTADO Y LÓGICA DEL CLASIFICADOR
+    // ----------------------------------------------------
+    const [step, setStep] = useState(STEPS.UPLOAD);
+    const [file, setFile] = useState(null); 
+    const [previewUrl, setPreviewUrl] = useState(null); 
+    const [classificationResult, setClassificationResult] = useState(null); 
+    const [error, setError] = useState(null);
+    const [isDragOver, setIsDragOver] = useState(false); 
 
-  const handleFileChange = useCallback((event) => {
-    const selectedFile = event.target.files[0];
-    handleFile(selectedFile);
-  }, [handleFile]);
-  
-  const handleDrop = useCallback((event) => {
-    event.preventDefault();
-    setIsDragOver(false);
-    const selectedFile = event.dataTransfer.files[0];
-    handleFile(selectedFile);
-  }, [handleFile]);
+    const resultData = useMemo(() => ({
+        'Normal': {
+            title: "Diagnóstico: Oído Medio Sano (Normal)",
+            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
+            color: "green",
+        },
+        'AOE': {
+            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
+            color: "orange",
+        },
+        'AOM': {
+            title: "Diagnóstico: Otitis Media Aguda (AOM)",
+            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
+            color: "red",
+        }
+    }), []);
+    
+    const processFile = (selectedFile) => {
+        if (selectedFile && selectedFile.type.startsWith('image/')) {
+            setFile(selectedFile);
+            setPreviewUrl(URL.createObjectURL(selectedFile));
+            setError(null);
+        } else {
+            setError("Tipo de archivo no válido. Por favor, sube una imagen (JPG/PNG).");
+            setFile(null);
+            setPreviewUrl(null);
+        }
+    };
 
-  const handleSubmit = useCallback(async () => {
-    if (!file) {
-      setError("Por favor, sube una radiografía antes de clasificar.");
-      return;
-    }
+    const handleFileChange = (e) => {
+        processFile(e.target.files[0]);
+    };
 
-    setStep(STEPS.PROCESSING);
-    setError(null);
-    setClassificationResult(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch(RENDER_API_URL, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error en la API: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      // Mapeo del resultado para mostrar el título y descripción correctos
-      const resultKey = data.classification === 'Normal' ? 'Sano' : 'Otitis Media';
-      
-      setClassificationResult({
-        ...resultData[resultKey],
-        rawClassification: data.classification,
-        probability: (data.probability * 100).toFixed(2),
-      });
-      
-      setStep(STEPS.RESULT);
-
-    } catch (err) {
-      console.error("Error al procesar la imagen:", err);
-      setError("Hubo un error al conectar con el modelo IA. Inténtalo de nuevo.");
-      setStep(STEPS.UPLOAD); // Volver al inicio en caso de fallo
-    }
-  }, [file, resultData]);
-  
-  const handleReset = () => {
-    // Limpiar todos los estados y volver al inicio
-    setStep(STEPS.UPLOAD);
-    setFile(null);
-    setClassificationResult(null);
-    setError(null);
-    if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-    }
-  };
+    // (Otras funciones de Drag & Drop...)
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const files = e.dataTransfer.files;
+        if (files.length) {
+          processFile(files[0]);
+        }
+    };
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    };
+    const handleDragLeave = () => {
+        setIsDragOver(false);
+    };
 
 
-  // ----------------------------------------------------
-  // COMPONENTES DE VISTA
-  // ----------------------------------------------------
+    const classifyImage = useCallback(async () => {
+        if (!file) {
+          setError("Por favor, sube una imagen primero.");
+          return;
+        }
 
-  // 1. Vista de Subida (Paso 1)
-  const UploadView = () => (
-    <div 
-        className={`border-4 border-dashed p-10 text-center transition-colors duration-200 rounded-xl ${isDragOver ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white'}`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={handleDrop}
-    >
-        <p className="text-gray-600 mb-4">Arrastra y suelta aquí tu radiografía (JPEG o PNG)</p>
-        <label className="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md inline-block">
-            Seleccionar Archivo
-            <input 
-                type="file" 
-                accept="image/jpeg,image/png" 
-                className="hidden" 
-                onChange={handleFileChange}
-            />
-        </label>
-        {file && (
-            <div className="mt-4 text-sm text-gray-700">
-                Archivo seleccionado: <span className="font-semibold">{file.name}</span>
+        setStep(STEPS.PROCESSING);
+        setError(null);
+
+        const formData = new FormData();
+        formData.append('image', file, file.name); 
+
+        try {
+            const response = await fetch(RENDER_API_URL, {
+                method: 'POST',
+                // 🚨 Enviar el Token en la cabecera (Esto lo hará seguro en el futuro)
+                headers: {
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: formData,
+            });
+
+            if (response.status === 401) {
+                // Si la API devuelve 401 (No Autorizado)
+                throw new Error("Sesión expirada o no autorizada. Por favor, vuelve a iniciar sesión.");
+            }
+            if (!response.ok) {
+                const statusText = response.statusText || 'Error Desconocido';
+                throw new Error(`Error HTTP: ${response.status}. ${statusText}`);
+            }
+
+            const result = await response.json();
+            const classification = result?.prediccion; 
+
+            if (!classification || !resultData[classification]) {
+                throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
+            }
+            
+            setClassificationResult(classification);
+            setStep(STEPS.RESULT);
+
+        } catch (err) {
+            console.error("Error en la clasificación:", err);
+            
+            let displayError = `Error: ${err.message}. Verifica el formato de la API.`;
+
+            if (err.message.includes("401")) {
+                 displayError = "⚠️ Tu sesión ha expirado o no estás autorizado. Por favor, inicia sesión de nuevo.";
+            } else if (err.message.includes("Error HTTP: 404")) {
+                 displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma que la ruta del servidor de Render es la correcta (debe ser /predict).";
+            } else if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
+                displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor. Inténtalo de nuevo en 30 segundos.";
+            }
+
+            setError(displayError);
+            setStep(STEPS.UPLOAD); 
+            setClassificationResult(null);
+        }
+    }, [file, resultData, token]);
+
+    const handleReset = () => {
+        setStep(STEPS.UPLOAD);
+        setFile(null);
+        setClassificationResult(null);
+        setError(null);
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
+        }
+    };
+    
+    // (Renderización de pasos omitida por brevedad, asume que está el código correcto)
+    const renderUploadStep = () => (
+        // ... Contenido de la carga de archivos
+        <div className="flex flex-col items-center p-6 space-y-4">
+            <div 
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={`flex items-center justify-center w-full h-48 border-2 border-dashed rounded-xl transition-colors duration-200 
+                ${isDragOver ? 'border-indigo-600 bg-indigo-100' : 'border-indigo-400 bg-indigo-50'}
+                `}
+            >
+                {previewUrl ? (
+                <img 
+                    src={previewUrl} 
+                    alt="Radiografía Previa" 
+                    className="h-full w-auto max-h-44 object-contain rounded-lg shadow-lg"
+                />
+                ) : (
+                <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-800 font-semibold transition duration-150 ease-in-out text-center px-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span className='text-sm sm:text-base'>Haz clic para seleccionar o arrastra una imagen aquí (JPG/PNG)</span>
+                    <input id="file-upload" type="file" className="hidden" accept="image/jpeg,image/png" onChange={handleFileChange} />
+                </label>
+                )}
             </div>
-        )}
-    </div>
-  );
 
-  // 2. Vista de Procesamiento (Paso 2)
-  const ProcessingView = () => (
-    <div className="flex flex-col items-center justify-center p-10 bg-white rounded-xl shadow-lg">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-        <p className="text-lg font-medium text-gray-700">Analizando la imagen...</p>
-        <p className="text-sm text-gray-500 mt-1">Esto puede tardar unos segundos mientras el modelo procesa los datos.</p>
-    </div>
-  );
-  
-  // 3. Vista de Resultado (Paso 3)
-  const ResultView = () => {
-    if (!classificationResult) return null;
+            {error && (
+                <p className="text-sm font-medium text-red-600 bg-red-100 p-3 rounded-xl w-full text-center border border-red-300 shadow-sm">
+                {error}
+                </p>
+            )}
 
-    const { title, description, color, icon, probability } = classificationResult;
-
-    return (
-      <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
-        {/* Encabezado del resultado */}
-        <div className={`p-6 ${color.replace('text', 'bg')} bg-opacity-10`}>
-          <h2 className={`text-2xl font-bold ${color} flex items-center`}>
-            {icon} <span className="ml-3">{title}</span>
-          </h2>
-          <p className="mt-2 text-gray-700">{description}</p>
-        </div>
-        
-        {/* Detalle y Probabilidad */}
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <span className="font-semibold text-gray-700">Probabilidad del Modelo:</span>
-            <span className={`text-xl font-extrabold ${color}`}>{probability}%</span>
-          </div>
-          
-          <p className="text-sm text-gray-500 italic">
-            *Nota: Este resultado es una ayuda diagnóstica y debe ser confirmado por un médico especialista.
-          </p>
-          
-          <button 
-            onClick={handleReset} 
-            className="w-full mt-6 py-3 px-4 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-lg transition duration-150 shadow-lg"
-          >
-            Nueva Clasificación
-          </button>
-        </div>
-      </div>
-    );
-  };
-  
-  // 4. Componente de Progreso de Pasos
-  const StepsProgress = () => {
-    let currentStep;
-    switch (step) {
-        case STEPS.UPLOAD: currentStep = 1; break;
-        case STEPS.PROCESSING: currentStep = 2; break;
-        case STEPS.RESULT: currentStep = 3; break;
-        default: currentStep = 1;
-    }
-    return (
-        <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
-            <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
-            <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
-            <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
+            {file && (
+                <button
+                onClick={classifyImage}
+                className="w-full px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-[1.02] disabled:opacity-50"
+                >
+                🚀 Paso 2: Clasificar Radiografía
+                </button>
+            )}
         </div>
     );
-  };
+    
+    const renderProcessingStep = () => (
+        <div className="flex flex-col items-center justify-center p-8 space-y-6">
+            <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.93 8.93 0 0115 19H5M20 9V4M4 12a8 8 0 018-8v0a8 8 0 018 8v0a8 8 0 01-8 8v0a8 8 0 01-8-8z" />
+            </svg>
+            <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
+            <p className="text-gray-600">Esto puede tomar unos segundos.</p>
+        </div>
+    );
 
+    const renderResultStep = () => {
+        if (!classificationResult) return renderUploadStep();
 
-  return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
-      
-      <main className="w-full max-w-3xl">
-        <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">🩺 Clasificador de Imágenes Médicas IA</h1>
-        <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido de otitis media mediante análisis de imágenes radiográficas.</p>
+        const data = resultData[classificationResult];
+        const isHealthy = classificationResult === 'Normal';
+        const classificationText = classificationResult.toUpperCase();
         
-        {/* Barra de progreso */}
-        <StepsProgress />
-        
-        {/* Mensaje de Error (si existe) */}
-        {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong className="font-bold">Error:</strong>
-                <span className="block sm:inline ml-2">{error}</span>
-            </div>
-        )}
+        // Configuración de colores dinámica
+        const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
+        const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
+        const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
 
-        <div className="bg-white p-8 rounded-xl shadow-xl">
-          
-          {/* VISTA 1: SUBIDA / PREVIEW */}
-          {step === STEPS.UPLOAD && (
-            <>
-                {previewUrl && (
-                    <div className="mb-6 flex flex-col items-center">
-                        <h2 className="text-xl font-semibold text-gray-800 mb-3">Radiografía Lista para Clasificar:</h2>
-                        <img 
-                            src={previewUrl} 
-                            alt="Previsualización de Radiografía" 
-                            className="max-w-full max-h-96 object-contain rounded-lg shadow-md border-2 border-gray-200"
+        return (
+            <div className="p-6 space-y-8">
+                <div className="text-center">
+                    <h2 className="text-2xl font-extrabold text-gray-900">
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
+                    </h2>
+                    
+                    <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
+                        {classificationText}
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3>
+                </div>
+
+                <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
+                    <p className="text-sm">{data.description}</p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 items-start">
+                    <div className="flex flex-col items-center space-y-3">
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
+                        <img
+                        src={previewUrl}
+                        alt="Radiografía Clasificada"
+                        className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
                         />
                     </div>
-                )}
-                
-                {/* Si no hay archivo, muestra el área de drop. Si hay archivo, solo el botón Clasificar. */}
-                {!file && <UploadView />}
-                
-                <div className='flex justify-center space-x-4 mt-6'>
-                    {file && (
-                        <>
-                            <button
-                                onClick={handleSubmit}
-                                className="w-full py-3 px-6 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition duration-150 shadow-lg"
-                            >
-                                Clasificar con IA
-                            </button>
-                            <button
-                                onClick={handleReset}
-                                className="py-3 px-6 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-lg transition duration-150 shadow-lg"
-                            >
-                                Cancelar
-                            </button>
-                        </>
-                    )}
+
+                    <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
+                        
+                        <div className="flex flex-col space-y-2"> 
+                            {Object.keys(EXAMPLE_IMAGES).map((key) => (
+                                <div key={key} className="flex flex-row items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                    <img 
+                                        src={EXAMPLE_IMAGES[key]} 
+                                        alt={`Ejemplo de ${key}`} 
+                                        className="w-1/3 max-w-[100px] h-auto object-cover rounded-md border-2 border-gray-100 mr-4"
+                                    />
+                                    <p className="mt-1 text-sm font-medium text-gray-700">{key}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                    </div>
                 </div>
-            </>
-          )}
 
-          {/* VISTA 2: PROCESAMIENTO */}
-          {step === STEPS.PROCESSING && <ProcessingView />}
+                <button
+                    onClick={handleReset}
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.01]"
+                >
+                    Reiniciar Clasificación
+                </button>
+            </div>
+        );
+    };
 
-          {/* VISTA 3: RESULTADO */}
-          {step === STEPS.RESULT && <ResultView />}
+    const renderCurrentStep = () => {
+        switch (step) {
+          case STEPS.PROCESSING:
+            return renderProcessingStep();
+          case STEPS.RESULT:
+            return renderResultStep();
+          case STEPS.UPLOAD:
+          default:
+            return renderUploadStep();
+        }
+    };
 
+    const getStepIndicator = () => {
+        let currentStep;
+        switch (step) {
+            case STEPS.UPLOAD: currentStep = 1; break;
+            case STEPS.PROCESSING: currentStep = 2; break;
+            case STEPS.RESULT: currentStep = 3; break;
+            default: currentStep = 1;
+        }
+        return (
+            <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
+            </div>
+        );
+    };
+
+
+    return (
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
+            
+            <main className="w-full max-w-3xl">
+                {/* 🚨 Botón de Logout */}
+                <div className="flex justify-end w-full mb-4">
+                    <button
+                        onClick={logout}
+                        className="text-xs px-3 py-1 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
+                    >
+                        Cerrar Sesión
+                    </button>
+                </div>
+                {/* 🚨 Título y Párrafo Corregidos */}
+                <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">👂 Oido IA Match</h1>
+                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
+
+                {getStepIndicator()}
+
+                <div className="bg-white rounded-2xl shadow-2xl transition-all duration-500 ease-in-out">
+                    {renderCurrentStep()}
+                </div>
+            </main>
+            
+            <footer className="mt-8 text-sm text-gray-500">
+                Desarrollado con React y Tailwind CSS
+            </footer>
         </div>
-      </main>
-      
-      {/* Footer / Aviso Legal */}
-      <footer className="mt-10 text-center text-xs text-gray-500">
-        &copy; {new Date().getFullYear()} Plataforma de Clasificación IA. Uso exclusivamente con fines de apoyo diagnóstico.
-      </footer>
-    </div>
-  );
+    );
 };
 
 export default App;
