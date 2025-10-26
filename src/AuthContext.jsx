@@ -4,7 +4,6 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 const AuthContext = createContext();
 
 // Hook personalizado para usar el contexto
-// Este hook será importado en RadiographyClassifier.jsx
 export const useAuth = () => {
     return useContext(AuthContext);
 };
@@ -17,20 +16,18 @@ export const AuthProvider = ({ children }) => {
     // 2. Comprobar si está logeado (existe un token)
     const isLoggedIn = !!token; 
 
-    // Función para Iniciar Sesión (guarda el token y actualiza el estado)
+    // Función para Iniciar Sesión (simulada por ahora)
     const login = (simulatedToken) => {
         // En un caso real, la API devuelve el token.
         // Aquí lo almacenamos y actualizamos el estado.
         localStorage.setItem('authToken', simulatedToken);
         setToken(simulatedToken);
-        console.log('Usuario autenticado con token simulado.');
     };
 
     // Función para Cerrar Sesión
     const logout = () => {
         localStorage.removeItem('authToken');
         setToken(null);
-        console.log('Sesión cerrada.');
     };
 
     // Objeto con el estado y las funciones que se proveerán al resto de la app
