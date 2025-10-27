@@ -20,10 +20,9 @@ const EXAMPLE_IMAGES = {
 };
 
 // ----------------------------------------------------
-// ✅ COMPONENTE: Barra de Navegación (Ahora a w-full)
+// ✅ COMPONENTE: Barra de Navegación (a w-full)
 // ----------------------------------------------------
 const NavbarContent = ({ logout, isLoggedIn }) => (
-    // 🚨 CLASE CORREGIDA: Eliminado 'max-w-3xl', ahora usa w-full y tiene shadow-lg.
     <nav className="flex items-center justify-between w-full mb-8 px-6 py-4 bg-white shadow-lg">
         <div className="flex flex-col">
             <h1 className="text-xl font-extrabold text-gray-900">
@@ -58,10 +57,8 @@ const App = () => {
     // ----------------------------------------------------
     if (!isLoggedIn) {
         return (
-            // El contenedor principal maneja el fondo y la altura mínima.
             <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
                 <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
-                {/* Contenedor para centrar el formulario de Login debajo del Navbar */}
                 <div className="flex flex-col items-center justify-center flex-grow w-full">
                     <Login />
                 </div>
@@ -113,7 +110,6 @@ const App = () => {
         processFile(e.target.files[0]);
     };
 
-    // (Otras funciones de Drag & Drop...)
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragOver(false);
@@ -177,4 +173,129 @@ const App = () => {
 
             if (err.message.includes("401")) {
                  displayError = "⚠️ Tu sesión ha expirado o no estás autorizado. Por favor, inicia sesión de nuevo.";
-            } else if (err.message.includes("Error HTTP
+            } else if (err.message.includes("Error HTTP: 404")) {
+                 displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma que la ruta del servidor de Render es la correcta (debe ser /predict).";
+            } else if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
+                displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor. Inténtalo de nuevo en 30 segundos.";
+            }
+
+            setError(displayError);
+            setStep(STEPS.UPLOAD); 
+            setClassificationResult(null);
+        }
+    }, [file, resultData, token]);
+
+    const handleReset = () => {
+        setStep(STEPS.UPLOAD);
+        setFile(null);
+        setClassificationResult(null);
+        setError(null);
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
+        }
+    };
+    
+    // ----------------------------------------------------
+    // FUNCIONES DE RENDERIZADO DE PASOS
+    // ----------------------------------------------------
+    const renderUploadStep = () => (
+        <div className="flex flex-col items-center p-6 space-y-4">
+            <div 
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                // ✅ ESTA LÍNEA DE CLASES FUE REVISADA
+                className={`flex items-center justify-center w-full h-48 border-2 border-dashed rounded-xl transition-colors duration-200 
+                ${isDragOver ? 'border-indigo-600 bg-indigo-100' : 'border-indigo-400 bg-indigo-50'}
+                `}
+            >
+                {previewUrl ? (
+                <img 
+                    src={previewUrl} 
+                    alt="Radiografía Previa" 
+                    className="h-full w-auto max-h-44 object-contain rounded-lg shadow-lg"
+                />
+                ) : (
+                <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-800 font-semibold transition duration-150 ease-in-out text-center px-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span className='text-sm sm:text-base'>Haz clic para seleccionar o arrastra una imagen aquí (JPG/PNG)</span>
+                    <input id="file-upload" type="file" className="hidden" accept="image/jpeg,image/png" onChange={handleFileChange} />
+                </label>
+                )}
+            </div>
+
+            {error && (
+                <p className="text-sm font-medium text-red-600 bg-red-100 p-3 rounded-xl w-full text-center border border-red-300 shadow-sm">
+                {error}
+                </p>
+            )}
+
+            {file && (
+                <button
+                onClick={classifyImage}
+                className="w-full px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-[1.02] disabled:opacity-50"
+                >
+                🚀 Paso 2: Clasificar Radiografía
+                </button>
+            )}
+        </div>
+    );
+    
+    const renderProcessingStep = () => (
+        <div className="flex flex-col items-center justify-center p-8 space-y-6">
+            <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.93 8.93 0 0115 19H5M20 9V4M4 12a8 8 0 018-8v0a8 8 0 018 8v0a8 8 0 01-8 8v0a8 8 0 01-8-8z" />
+            </svg>
+            <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
+            <p className="text-gray-600">Esto puede tomar unos segundos.</p>
+        </div>
+    );
+
+    const renderResultStep = () => {
+        if (!classificationResult) return renderUploadStep();
+
+        const data = resultData[classificationResult];
+        const isHealthy = classificationResult === 'Normal';
+        const classificationText = classificationResult.toUpperCase();
+        
+        // Configuración de colores dinámica
+        const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
+        const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
+        const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
+
+        return (
+            <div className="p-6 space-y-8">
+                <div className="text-center">
+                    <h2 className="text-2xl font-extrabold text-gray-900">
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
+                    </h2>
+                    
+                    <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
+                        {classificationText}
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3>
+                </div>
+
+                <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
+                    <p className="text-sm">{data.description}</p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 items-start">
+                    <div className="flex flex-col items-center space-y-3">
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
+                        <img
+                        src={previewUrl}
+                        alt="Radiografía Clasificada"
+                        className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
+                        
+                        <div className="flex flex-col space-y-2"> 
+                            {Object.keys(EXAMPLE_IMAGES).map((key) => (
+                                <div key={key}
