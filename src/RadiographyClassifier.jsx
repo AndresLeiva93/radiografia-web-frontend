@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
-// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor de Render
+// URL de la API
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
@@ -205,7 +205,6 @@ const App = () => {
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
-                // ✅ ESTA LÍNEA DE CLASES FUE REVISADA
                 className={`flex items-center justify-center w-full h-48 border-2 border-dashed rounded-xl transition-colors duration-200 
                 ${isDragOver ? 'border-indigo-600 bg-indigo-100' : 'border-indigo-400 bg-indigo-50'}
                 `}
@@ -298,4 +297,81 @@ const App = () => {
                         
                         <div className="flex flex-col space-y-2"> 
                             {Object.keys(EXAMPLE_IMAGES).map((key) => (
-                                <div key={key}
+                                <div key={key} className="flex flex-row items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                    <img 
+                                        src={EXAMPLE_IMAGES[key]} 
+                                        alt={`Ejemplo de ${key}`} 
+                                        className="w-1/3 max-w-[100px] h-auto object-cover rounded-md border-2 border-gray-100 mr-4"
+                                    />
+                                    <p className="mt-1 text-sm font-medium text-gray-700">{key}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                    </div>
+                </div>
+
+                <button
+                    onClick={handleReset}
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.01]"
+                >
+                    Reiniciar Clasificación
+                </button>
+            </div>
+        );
+    };
+
+    const renderCurrentStep = () => {
+        switch (step) {
+          case STEPS.PROCESSING:
+            return renderProcessingStep();
+          case STEPS.RESULT:
+            return renderResultStep();
+          case STEPS.UPLOAD:
+          default:
+            return renderUploadStep();
+        }
+    };
+
+    const getStepIndicator = () => {
+        let currentStep;
+        switch (step) {
+            case STEPS.UPLOAD: currentStep = 1; break;
+            case STEPS.PROCESSING: currentStep = 2; break;
+            case STEPS.RESULT: currentStep = 3; break;
+            default: currentStep = 1;
+        }
+        return (
+            <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
+            </div>
+        );
+    };
+
+
+    return (
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-inter pt-0">
+            
+            <NavbarContent isLoggedIn={isLoggedIn} logout={logout} /> 
+
+            <main className="w-full max-w-3xl"> 
+                
+                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
+
+                {getStepIndicator()}
+
+                <div className="bg-white rounded-2xl shadow-2xl transition-all duration-500 ease-in-out">
+                    {renderCurrentStep()}
+                </div>
+            </main>
+            
+            <footer className="mt-8 text-sm text-gray-500">
+                Desarrollado con React y Tailwind CSS
+            </footer>
+        </div>
+    );
+}; // 🚨 CIERRE DE LA FUNCIÓN APP
+
+export default App; // 🚨 CIERRE DEL ARCHIVO
