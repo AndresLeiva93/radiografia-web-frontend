@@ -1,170 +1,179 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { useAuth } from './AuthContext'; 
-import Login from './Login'; 
+import React, { useState } from 'react';
+import { useAuth } from './AuthContext';
 
-const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
-
-// Constantes de Estado
-const STEPS = {
-  UPLOAD: 'upload',
-  PROCESSING: 'processing',
-  RESULT: 'result'
-};
-
-// Rutas de imágenes de ejemplo
-const EXAMPLE_IMAGES = {
-  'Normal': '/images/Normal.jpg', 
-  'AOE': '/images/AOE.jpg',
-  'AOM': '/images/AOM.jpg',
-};
-
-// ----------------------------------------------------
-// NUEVO COMPONENTE: Barra de Navegación Simple
-// ----------------------------------------------------
-const NavbarContent = ({ logout, isLoggedIn }) => (
-    <nav className="flex items-center justify-between w-full max-w-3xl mb-8 p-4 bg-white rounded-xl shadow-lg">
-        <div className="flex flex-col">
-            <h1 className="text-xl font-extrabold text-gray-900">
-                👂 Oido IA Match
-            </h1>
-            <p className="text-xs text-gray-500">
-                Herramienta de apoyo al diagnóstico rápido.
-            </p>
-        </div>
-        
-        {isLoggedIn && (
-            <button
-                onClick={logout}
-                className="text-sm px-4 py-2 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
-            >
-                Cerrar Sesión
-            </button>
-        )}
-        {!isLoggedIn && (
-            // Mensaje o logo simple para cuando no está logeado
-            <span className="text-sm text-indigo-600 font-semibold">Acceso Requerido</span>
-        )}
-    </nav>
-);
-
-
-// Componente principal de la aplicación
-const App = () => {
-    const { isLoggedIn, logout, token } = useAuth(); 
-
-    // Si no está logeado, mostrar el Navbar y luego el Login
-    if (!isLoggedIn) {
-        return (
-            <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
-                <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
-                <Login />
-            </div>
-        );
-    }
+const AuthScreen = () => {
+    // Estado para alternar entre Login (true) y Registro (false)
+    const [isLoginView, setIsLoginView] = useState(true); 
     
-    // ----------------------------------------------------
-    // ESTADO Y LÓGICA DEL CLASIFICADOR (Solo si está logeado)
-    // ----------------------------------------------------
-    const [step, setStep] = useState(STEPS.UPLOAD);
-    const [file, setFile] = useState(null); 
-    const [previewUrl, setPreviewUrl] = useState(null); 
-    const [classificationResult, setClassificationResult] = useState(null); 
+    // Estados del formulario
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState(''); // Solo para Registro
+    
+    // Estados de la interfaz
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [isDragOver, setIsDragOver] = useState(false); 
-
-    const resultData = useMemo(() => ({
-        'Normal': {
-            title: "Diagnóstico: Oído Medio Sano (Normal)",
-            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
-            color: "green",
-        },
-        'AOE': {
-            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
-            color: "orange",
-        },
-        'AOM': {
-            title: "Diagnóstico: Otitis Media Aguda (AOM)",
-            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
-            color: "red",
-        }
-    }), []);
+    const [successMessage, setSuccessMessage] = useState(null);
     
-    const processFile = (selectedFile) => {
-        if (selectedFile && selectedFile.type.startsWith('image/')) {
-            setFile(selectedFile);
-            setPreviewUrl(URL.createObjectURL(selectedFile));
-            setError(null);
-        } else {
-            setError("Tipo de archivo no válido. Por favor, sube una imagen (JPG/PNG).");
-            setFile(null);
-            setPreviewUrl(null);
-        }
-    };
+    const { login } = useAuth();
 
-    const handleFileChange = (e) => {
-        processFile(e.target.files[0]);
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragOver(false);
-        const files = e.dataTransfer.files;
-        if (files.length) {
-          processFile(files[0]);
-        }
-    };
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragOver(true);
-    };
-    const handleDragLeave = () => {
-        setIsDragOver(false);
-    };
-
-
-    const classifyImage = useCallback(async () => {
-        if (!file) {
-          setError("Por favor, sube una imagen primero.");
-          return;
-        }
-
-        setStep(STEPS.PROCESSING);
+    const handleToggleView = () => {
+        setIsLoginView(!isLoginView);
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
         setError(null);
+        setSuccessMessage(null);
+    };
 
-        const formData = new FormData();
-        formData.append('image', file, file.name); 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setSuccessMessage(null);
+        setLoading(true);
 
         try {
-            const response = await fetch(RENDER_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}` 
-                },
-                body: formData,
-            });
+            // ----------------------------------------------------
+            // Lógica de REGISTRO (Simulada)
+            // ----------------------------------------------------
+            if (!isLoginView) {
+                if (password !== confirmPassword) {
+                    throw new Error("Las contraseñas no coinciden.");
+                }
+                if (password.length < 6) {
+                    throw new Error("La contraseña debe tener al menos 6 caracteres.");
+                }
+                
+                // Simular llamada a API /register
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
+                
+                if (email && password) {
+                    // Si el registro 'falla' por algún motivo simulado
+                    if (email.includes('error')) {
+                         throw new Error("El usuario ya está registrado.");
+                    }
 
-            if (response.status === 401) {
-                throw new Error("Sesión expirada o no autorizada. Por favor, vuelve a iniciar sesión.");
+                    // Registro 'exitoso'
+                    setSuccessMessage("¡Registro exitoso! Por favor, inicia sesión.");
+                    setIsLoginView(true); // Cambiar a vista de Login automáticamente
+                } else {
+                    throw new Error("Faltan campos obligatorios.");
+                }
+            } 
+            // ----------------------------------------------------
+            // Lógica de LOGIN (Simulada)
+            // ----------------------------------------------------
+            else {
+                // Simular llamada a API /login
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
+
+                if (email && password) {
+                    // Simulamos que cualquier valor inicia sesión
+                    const simulatedToken = 'fake-jwt-token-for-user-' + email.substring(0, 3); 
+                    login(simulatedToken); // Almacena el token y logea
+                } else {
+                    throw new Error("Por favor, ingresa tu email y contraseña.");
+                }
             }
-            if (!response.ok) {
-                const statusText = response.statusText || 'Error Desconocido';
-                throw new Error(`Error HTTP: ${response.status}. ${statusText}`);
-            }
-
-            const result = await response.json();
-            const classification = result?.prediccion; 
-
-            if (!classification || !resultData[classification]) {
-                throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
-            }
-            
-            setClassificationResult(classification);
-            setStep(STEPS.RESULT);
-
         } catch (err) {
-            console.error("Error en la clasificación:", err);
-            
-            let displayError = `Error: ${err.message}. Verifica el formato de la API.`;
+            setError(err.message || `Error al intentar ${isLoginView ? 'iniciar sesión' : 'registrarte'}.`);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            if (err.message
+    return (
+        <div className="flex flex-col items-center w-full max-w-3xl p-4"> 
+            <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-2xl">
+                <p className="text-center text-gray-500 mb-8">{isLoginView ? "Acceso de Usuarios Autorizados" : "Registro de Nuevo Usuario"}</p>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            placeholder="usuario@dominio.com"
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                    </div>
+                    
+                    {/* Campo de confirmación solo para Registro */}
+                    {!isLoginView && (
+                        <div>
+                            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">Confirmar Contraseña</label>
+                            <input
+                                id="confirm-password"
+                                name="confirm-password"
+                                type="password"
+                                required
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            />
+                        </div>
+                    )}
+
+                    {error && (
+                        <p className="text-sm font-medium text-red-600 bg-red-100 p-3 rounded-md text-center">
+                            {error}
+                        </p>
+                    )}
+                    
+                    {successMessage && (
+                        <p className="text-sm font-medium text-green-700 bg-green-100 p-3 rounded-md text-center">
+                            {successMessage}
+                        </p>
+                    )}
+
+                    <div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition duration-200 
+                                ${loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'}
+                            `}
+                        >
+                            {loading 
+                                ? (isLoginView ? 'Iniciando Sesión...' : 'Registrando...') 
+                                : (isLoginView ? 'Iniciar Sesión' : 'Registrarse Ahora')
+                            }
+                        </button>
+                    </div>
+                </form>
+
+                {/* Botón para alternar vistas */}
+                <div className="mt-6 text-center">
+                    <button
+                        onClick={handleToggleView}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition duration-150"
+                    >
+                        {isLoginView 
+                            ? '¿No tienes cuenta? Regístrate aquí' 
+                            : '¿Ya tienes una cuenta? Inicia Sesión'
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default AuthScreen;
