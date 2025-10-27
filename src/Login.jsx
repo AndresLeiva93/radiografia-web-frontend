@@ -79,10 +79,8 @@ const AuthScreen = () => {
     };
 
     return (
-        {/* Eliminamos el layout y fondo, que ahora maneja RadiographyClassifier */}
         <div className="flex flex-col items-center w-full p-4"> 
             <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-2xl">
-                {/* 🚨 ELIMINADO: Título H2. Se mantiene el párrafo descriptivo. */}
                 <p className="text-center text-gray-500 mb-8">{isLoginView ? "Acceso de Usuarios Autorizados" : "Registro de Nuevo Usuario"}</p>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
