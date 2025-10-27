@@ -48,12 +48,9 @@ const AuthScreen = () => {
                 await new Promise(resolve => setTimeout(resolve, 1500)); 
                 
                 if (email && password) {
-                    // Si el registro 'falla' por algún motivo simulado
                     if (email.includes('error')) {
                          throw new Error("El usuario ya está registrado.");
                     }
-
-                    // Registro 'exitoso'
                     setSuccessMessage("¡Registro exitoso! Por favor, inicia sesión.");
                     setIsLoginView(true); // Cambiar a vista de Login automáticamente
                 } else {
@@ -68,9 +65,8 @@ const AuthScreen = () => {
                 await new Promise(resolve => setTimeout(resolve, 1500)); 
 
                 if (email && password) {
-                    // Simulamos que cualquier valor inicia sesión
                     const simulatedToken = 'fake-jwt-token-for-user-' + email.substring(0, 3); 
-                    login(simulatedToken); // Almacena el token y logea
+                    login(simulatedToken); 
                 } else {
                     throw new Error("Por favor, ingresa tu email y contraseña.");
                 }
@@ -83,8 +79,10 @@ const AuthScreen = () => {
     };
 
     return (
-        <div className="flex flex-col items-center w-full max-w-3xl p-4"> 
+        {/* Eliminamos el layout y fondo, que ahora maneja RadiographyClassifier */}
+        <div className="flex flex-col items-center w-full p-4"> 
             <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-2xl">
+                {/* 🚨 ELIMINADO: Título H2. Se mantiene el párrafo descriptivo. */}
                 <p className="text-center text-gray-500 mb-8">{isLoginView ? "Acceso de Usuarios Autorizados" : "Registro de Nuevo Usuario"}</p>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -115,7 +113,6 @@ const AuthScreen = () => {
                         />
                     </div>
                     
-                    {/* Campo de confirmación solo para Registro */}
                     {!isLoginView && (
                         <div>
                             <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">Confirmar Contraseña</label>
