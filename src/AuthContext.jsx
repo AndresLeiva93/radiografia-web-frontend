@@ -18,8 +18,6 @@ export const AuthProvider = ({ children }) => {
 
     // Función para Iniciar Sesión (simulada por ahora)
     const login = (simulatedToken) => {
-        // En un caso real, la API devuelve el token.
-        // Aquí lo almacenamos y actualizamos el estado.
         localStorage.setItem('authToken', simulatedToken);
         setToken(simulatedToken);
     };
