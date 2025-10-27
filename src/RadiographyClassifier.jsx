@@ -23,6 +23,7 @@ const EXAMPLE_IMAGES = {
 // ✅ COMPONENTE: Barra de Navegación (a w-full)
 // ----------------------------------------------------
 const NavbarContent = ({ logout, isLoggedIn }) => (
+    // La clase 'w-full' aquí garantiza que ocupe todo el ancho disponible
     <nav className="flex items-center justify-between w-full mb-8 px-6 py-4 bg-white shadow-lg">
         <div className="flex flex-col">
             <h1 className="text-xl font-extrabold text-gray-900">
@@ -57,6 +58,7 @@ const App = () => {
     // ----------------------------------------------------
     if (!isLoggedIn) {
         return (
+            // Aquí el Navbar ya funciona bien porque este contenedor no tiene padding lateral que lo restrinja
             <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
                 <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
                 <div className="flex flex-col items-center justify-center flex-grow w-full">
@@ -352,11 +354,13 @@ const App = () => {
 
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-inter pt-0">
+        // 🚨 1. CORRECCIÓN: Eliminamos 'items-center' y 'p-4' para liberar el Navbar
+        <div className="min-h-screen bg-gray-100 flex flex-col font-inter">
             
             <NavbarContent isLoggedIn={isLoggedIn} logout={logout} /> 
 
-            <main className="w-full max-w-3xl"> 
+            {/* 🚨 2. CORRECCIÓN: Agregamos 'mx-auto' y 'px-4' para centrar el contenido principal y darle padding */}
+            <main className="w-full max-w-3xl mx-auto px-4"> 
                 
                 <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
 
@@ -367,11 +371,12 @@ const App = () => {
                 </div>
             </main>
             
-            <footer className="mt-8 text-sm text-gray-500">
+            {/* 🚨 3. CORRECCIÓN: Centramos y restringimos el footer también */}
+            <footer className="mt-8 text-sm text-gray-500 w-full max-w-3xl mx-auto px-4 pb-4">
                 Desarrollado con React y Tailwind CSS
             </footer>
         </div>
     );
-}; // 🚨 CIERRE DE LA FUNCIÓN APP
+}; 
 
-export default App; // 🚨 CIERRE DEL ARCHIVO
+export default App;
