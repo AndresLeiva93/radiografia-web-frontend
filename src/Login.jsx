@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 
+// 🚨 1. LISTA DE USUARIOS AUTORIZADOS (Base de datos local simulada)
+// NOTA: En una aplicación real, esta lista se cargaría de un servidor y la contraseña
+// se almacenaría como un hash seguro (ej: bcrypt), no en texto plano.
+const AUTHORIZED_USERS = [
+    { email: 'tnascimento@miuandes.cl', password: 'tnascimento123' },
+    { email: 'tom.opazo@profesor.duoc.cl', password: 'tnascimento123' },
+    { email: 'fel.navarroc@duocuc.cl', password: 'tnascimento123' },
+    { email: 'j.dillarza@profesor.duoc.cl', password: 'tnascimento123' }
+];
+
 const AuthScreen = () => {
     // Estado para alternar entre Login (true) y Registro (false)
     const [isLoginView, setIsLoginView] = useState(true); 
@@ -48,28 +58,40 @@ const AuthScreen = () => {
                 await new Promise(resolve => setTimeout(resolve, 1500)); 
                 
                 if (email && password) {
-                    if (email.includes('error')) {
+                    // 🚨 Prevenir registro si el email ya está en la lista de autorizados
+                    if (AUTHORIZED_USERS.some(u => u.email === email)) {
                          throw new Error("El usuario ya está registrado.");
                     }
-                    setSuccessMessage("¡Registro exitoso! Por favor, inicia sesión.");
+                    
+                    setSuccessMessage("¡Registro exitoso! Por favor, inicia sesión. NOTA: Este email solo es válido si está en la lista de usuarios autorizados.");
                     setIsLoginView(true); // Cambiar a vista de Login automáticamente
                 } else {
                     throw new Error("Faltan campos obligatorios.");
                 }
             } 
             // ----------------------------------------------------
-            // Lógica de LOGIN (Simulada)
+            // Lógica de LOGIN (Simulada y VALIDADA)
             // ----------------------------------------------------
             else {
-                // Simular llamada a API /login
-                await new Promise(resolve => setTimeout(resolve, 1500)); 
-
-                if (email && password) {
-                    const simulatedToken = 'fake-jwt-token-for-user-' + email.substring(0, 3); 
-                    login(simulatedToken); 
-                } else {
+                if (!email || !password) {
                     throw new Error("Por favor, ingresa tu email y contraseña.");
                 }
+                
+                // 🚨 2. Validar credenciales contra la lista de usuarios autorizados
+                const user = AUTHORIZED_USERS.find(u => u.email === email && u.password === password);
+
+                if (!user) {
+                    // Simular un pequeño delay para que no sea instantáneo
+                    await new Promise(resolve => setTimeout(resolve, 500)); 
+                    throw new Error("Credenciales inválidas. Email o contraseña incorrectos.");
+                }
+
+                // Simular llamada a API /login (Delay para UX)
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
+
+                // 🚨 3. Si las credenciales son correctas, logear con el token
+                const simulatedToken = 'fake-jwt-token-for-user-' + email.substring(0, email.indexOf('@')); 
+                login(simulatedToken); 
             }
         } catch (err) {
             setError(err.message || `Error al intentar ${isLoginView ? 'iniciar sesión' : 'registrarte'}.`);
@@ -81,7 +103,9 @@ const AuthScreen = () => {
     return (
         <div className="flex flex-col items-center w-full p-4"> 
             <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-2xl">
-                <p className="text-center text-gray-500 mb-8">{isLoginView ? "Acceso de Usuarios Autorizados" : "Registro de Nuevo Usuario"}</p>
+                {/* 🚨 Cambiando el título para reflejar la restricción */}
+                <h1 className="text-2xl font-bold text-center text-indigo-700 mb-2">Acceso Autorizado</h1>
+                <p className="text-center text-gray-500 mb-8">{isLoginView ? "Ingresa tus credenciales autorizadas" : "Registro (Solo con fines de prueba)"}</p>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
@@ -147,7 +171,7 @@ const AuthScreen = () => {
                             `}
                         >
                             {loading 
-                                ? (isLoginView ? 'Iniciando Sesión...' : 'Registrando...') 
+                                ? (isLoginView ? 'Verificando...' : 'Registrando...') 
                                 : (isLoginView ? 'Iniciar Sesión' : 'Registrarse Ahora')
                             }
                         </button>
