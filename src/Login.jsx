@@ -6,9 +6,9 @@ import { useAuth } from './AuthContext';
 // se almacenaría como un hash seguro (ej: bcrypt), no en texto plano.
 const AUTHORIZED_USERS = [
     { email: 'tnascimento@miuandes.cl', password: 'tnascimento123' },
-    { email: 'tom.opazo@profesor.duoc.cl', password: 'tnascimento123' },
-    { email: 'fel.navarroc@duocuc.cl', password: 'tnascimento123' },
-    { email: 'j.dillarza@profesor.duoc.cl', password: 'tnascimento123' }
+    { email: 'tom.opazo@profesor.duoc.cl', password: 'tom.opazo123' },
+    { email: 'fel.navarroc@duocuc.cl', password: 'fel.navarroc123' },
+    { email: 'j.dillarza@profesor.duoc.cl', password: 'j.dillarza123' }
 ];
 
 const AuthScreen = () => {
