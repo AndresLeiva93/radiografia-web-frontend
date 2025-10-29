@@ -271,7 +271,7 @@ const App = () => {
             <div className="p-6 space-y-8">
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
-                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
                     </h2>
                     
                     <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
@@ -286,7 +286,7 @@ const App = () => {
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="flex flex-col items-center space-y-3">
-                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imágen:</h3>
                         <img
                         src={previewUrl}
                         alt="Radiografía Clasificada"
