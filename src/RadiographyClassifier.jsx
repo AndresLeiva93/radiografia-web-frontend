@@ -95,7 +95,7 @@ const App = () => {
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
-            // El nombre de la clase es el nombre del archivo sin extensión
+            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
             const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
             
             images[className] = modules[path];
@@ -277,4 +277,112 @@ const App = () => {
         return (
             <div className="p-6 space-y-8">
                 <div className="text-center">
-                    <h2 className="text-2xl font-extrab
+                    <h2 className="text-2xl font-extrabold text-gray-900">
+                        {/* ✅ Título de Resultado */}
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
+                    </h2>
+                    
+                    <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
+                        {classificationText}
+                    </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 items-start">
+                    <div className="flex flex-col items-center space-y-3">
+                        {/* ✅ Título de Imagen */}
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imagen:</h3>
+                        <img
+                        src={previewUrl}
+                        alt="Radiografía Clasificada"
+                        className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
+                        
+                        {/* ✅ RENDERIZADO DINÁMICO en 2 COLUMNAS (con distribución interna 70%-30%) */}
+                        <div className="grid grid-cols-2 gap-2"> 
+                            {Object.keys(dynamicExampleImages).map((key) => (
+                                // Contenedor horizontal
+                                <div key={key} className="flex items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                    <img 
+                                        src={dynamicExampleImages[key]} 
+                                        alt={`Ejemplo de ${key}`} 
+                                        // 🚨 70% de ancho (usamos w-2/3)
+                                        className="w-2/3 h-auto object-cover rounded-md border-2 border-gray-100 mr-2" 
+                                    />
+                                    {/* 🚨 30% de ancho (usamos w-1/3) */}
+                                    <p className="w-1/3 text-right text-xs font-medium text-gray-700 truncate" title={key}>{key}</p> 
+                                </div>
+                            ))}
+                        </div>
+                        {/* ------------------------------------------- */}
+
+                    </div>
+                </div>
+
+                <button
+                    onClick={handleReset}
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.01]"
+                >
+                    Reiniciar Clasificación
+                </button>
+            </div>
+        );
+    };
+
+    const renderCurrentStep = () => {
+        switch (step) {
+          case STEPS.PROCESSING:
+            return renderProcessingStep();
+          case STEPS.RESULT:
+            return renderResultStep();
+          case STEPS.UPLOAD:
+          default:
+            return renderUploadStep();
+        }
+    };
+
+    const getStepIndicator = () => {
+        let currentStep;
+        switch (step) {
+            case STEPS.UPLOAD: currentStep = 1; break;
+            case STEPS.PROCESSING: currentStep = 2; break;
+            case STEPS.RESULT: currentStep = 3; break;
+            default: currentStep = 1;
+        }
+        return (
+            <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
+            </div>
+        );
+    };
+
+
+    return (
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-inter pt-0">
+            
+            <NavbarContent isLoggedIn={isLoggedIn} logout={logout} /> 
+
+            <main className="w-full max-w-3xl"> 
+                
+                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
+
+                {getStepIndicator()}
+
+                <div className="bg-white rounded-2xl shadow-2xl transition-all duration-500 ease-in-out">
+                    {renderCurrentStep()}
+                </div>
+            </main>
+            
+            <footer className="mt-8 text-sm text-gray-500">
+                Desarrollado con React y Tailwind CSS
+            </footer>
+        </div>
+    );
+}; 
+
+export default App;
