@@ -301,28 +301,26 @@ const App = () => {
                     <div className="space-y-3">
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
                         
-                        {/* ✅ RENDERIZADO DINÁMICO en 2 COLUMNAS (con distribución interna 70%-30%) */}
+                        {/* ✅ RENDERIZADO DINÁMICO en 2 COLUMNAS (con distribución interna 70%-30% y padding p-2) */}
                         <div className="grid grid-cols-2 gap-2"> 
                             {Object.keys(dynamicExampleImages).map((key) => (
-                                // Contenedor horizontal que envuelve los sub-elementos (título e imagen)
+                                // Contenedor principal de la tarjeta (vertical)
                                 <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
                                     
-                                    {/* 🚨 NUEVO ORDEN: TÍTULO ARRIBA */}
+                                    {/* TÍTULO ARRIBA (Distribución 30% título / 70% espacio) */}
                                     <div className="flex w-full items-center justify-between px-1">
-                                         {/* El título ocupa 30% del espacio, y lo alineamos a la izquierda del título que representa el 70% */}
                                         <p className="text-left text-xs font-bold text-gray-800 w-1/3 truncate" title={key}>{key}</p> 
-                                        
-                                        {/* Este div actúa como relleno para centrar el título visualmente o dar espacio */}
                                         <div className="w-2/3"></div> 
                                     </div>
                                     
-                                    {/* 🚨 IMAGEN ABAJO: Ocupando casi todo el ancho de la tarjeta */}
-                                    <img 
-                                        src={dynamicExampleImages[key]} 
-                                        alt={`Ejemplo de ${key}`} 
-                                        // Le damos el 100% del ancho del contenedor padre (que es la columna)
-                                        className="w-full h-auto object-cover rounded-md border-2 border-gray-100 mt-1" 
-                                    />
+                                    {/* 🚨 Contenedor de IMAGEN con PADDING (p-2) para achicarla */}
+                                    <div className="w-full p-2"> 
+                                        <img 
+                                            src={dynamicExampleImages[key]} 
+                                            alt={`Ejemplo de ${key}`} 
+                                            className="w-full h-auto object-cover rounded-md border-2 border-gray-100" 
+                                        />
+                                    </div>
                                     
                                 </div>
                             ))}
