@@ -12,12 +12,8 @@ const STEPS = {
   RESULT: 'result'
 };
 
-// Rutas de imágenes de ejemplo
-const EXAMPLE_IMAGES = {
-  'Normal': '/images/Normal.jpg', 
-  'AOE': '/images/AOE.jpg',
-  'AOM': '/images/AOM.jpg',
-};
+// 🚨 ELIMINADO: Se elimina el objeto EXAMPLE_IMAGES estático. 
+// Las imágenes se cargarán dinámicamente desde el sistema de archivos.
 
 // ----------------------------------------------------
 // ✅ COMPONENTE: Barra de Navegación
@@ -77,7 +73,6 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
     const resultData = useMemo(() => ({
-        // Nota: 'title' y 'description' se mantienen en caso de querer reintroducirlos
         'Normal': {
             title: "Diagnóstico: Oído Medio Sano (Normal)",
             description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
@@ -94,6 +89,27 @@ const App = () => {
             color: "red",
         }
     }), []);
+
+    // 🚨 NUEVA LÓGICA: Carga dinámica de imágenes
+    const dynamicExampleImages = useMemo(() => {
+        // Usa import.meta.glob para cargar todas las imágenes .jpg en /public/images/
+        // La ruta es relativa al directorio raíz del proyecto.
+        const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
+        const images = {};
+
+        // Procesar los resultados:
+        // modules = { '/public/images/Normal.jpg': 'url...', '/public/images/AOE.jpg': 'url...' }
+        for (const path in modules) {
+            // Extraer el nombre de archivo (ej: 'Normal.jpg')
+            const fileNameWithExt = path.split('/').pop();
+            // Extraer el nombre de la clase (ej: 'Normal')
+            const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
+            
+            images[className] = modules[path];
+        }
+        return images;
+    }, []);
+    // ----------------------------------------------------
     
     const processFile = (selectedFile) => {
         if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -269,20 +285,18 @@ const App = () => {
             <div className="p-6 space-y-8">
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
-                        {/* ✅ CAMBIO: "Resultado Inmediato" -> "Resultado" */}
+                        {/* ✅ Título de Resultado */}
                         <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
                     </h2>
                     
                     <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
                         {classificationText}
                     </div>
-                    
-                    {/* 🚨 ELIMINADO: Título secundario y descripción */}
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="flex flex-col items-center space-y-3">
-                        {/* ✅ CAMBIO: "Radiografía del Paciente" -> "Imagen" */}
+                        {/* ✅ Título de Imagen */}
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imagen:</h3>
                         <img
                         src={previewUrl}
@@ -294,11 +308,12 @@ const App = () => {
                     <div className="space-y-3">
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
                         
+                        {/* 🚨 NUEVA LÓGICA DE RENDERIZADO DINÁMICO */}
                         <div className="flex flex-col space-y-2"> 
-                            {Object.keys(EXAMPLE_IMAGES).map((key) => (
+                            {Object.keys(dynamicExampleImages).map((key) => (
                                 <div key={key} className="flex flex-row items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
                                     <img 
-                                        src={EXAMPLE_IMAGES[key]} 
+                                        src={dynamicExampleImages[key]} 
                                         alt={`Ejemplo de ${key}`} 
                                         className="w-1/3 max-w-[100px] h-auto object-cover rounded-md border-2 border-gray-100 mr-4"
                                     />
@@ -306,6 +321,7 @@ const App = () => {
                                 </div>
                             ))}
                         </div>
+                        {/* ------------------------------------------- */}
 
                     </div>
                 </div>
