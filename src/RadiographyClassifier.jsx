@@ -278,7 +278,7 @@ const App = () => {
             <div className="p-6 space-y-8">
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
-                        {/* ✅ Título de Resultado */}
+                        {/* Título de Resultado */}
                         <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
                     </h2>
                     
@@ -289,7 +289,7 @@ const App = () => {
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="flex flex-col items-center space-y-3">
-                        {/* ✅ Título de Imagen */}
+                        {/* Título de Imagen */}
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imagen:</h3>
                         <img
                         src={previewUrl}
@@ -304,16 +304,26 @@ const App = () => {
                         {/* ✅ RENDERIZADO DINÁMICO en 2 COLUMNAS (con distribución interna 70%-30%) */}
                         <div className="grid grid-cols-2 gap-2"> 
                             {Object.keys(dynamicExampleImages).map((key) => (
-                                // Contenedor horizontal
-                                <div key={key} className="flex items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                // Contenedor horizontal que envuelve los sub-elementos (título e imagen)
+                                <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                    
+                                    {/* 🚨 NUEVO ORDEN: TÍTULO ARRIBA */}
+                                    <div className="flex w-full items-center justify-between px-1">
+                                         {/* El título ocupa 30% del espacio, y lo alineamos a la izquierda del título que representa el 70% */}
+                                        <p className="text-left text-xs font-bold text-gray-800 w-1/3 truncate" title={key}>{key}</p> 
+                                        
+                                        {/* Este div actúa como relleno para centrar el título visualmente o dar espacio */}
+                                        <div className="w-2/3"></div> 
+                                    </div>
+                                    
+                                    {/* 🚨 IMAGEN ABAJO: Ocupando casi todo el ancho de la tarjeta */}
                                     <img 
                                         src={dynamicExampleImages[key]} 
                                         alt={`Ejemplo de ${key}`} 
-                                        // 🚨 70% de ancho (usamos w-2/3)
-                                        className="w-2/3 h-auto object-cover rounded-md border-2 border-gray-100 mr-2" 
+                                        // Le damos el 100% del ancho del contenedor padre (que es la columna)
+                                        className="w-full h-auto object-cover rounded-md border-2 border-gray-100 mt-1" 
                                     />
-                                    {/* 🚨 30% de ancho (usamos w-1/3) */}
-                                    <p className="w-1/3 text-right text-xs font-medium text-gray-700 truncate" title={key}>{key}</p> 
+                                    
                                 </div>
                             ))}
                         </div>
