@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { useAuth } from './AuthContext'; // 🚨 IMPORTANTE
-import Login from './Login'; // 🚨 IMPORTANTE
+import { useAuth } from './AuthContext'; 
+import Login from './Login'; 
 
-// 🚨 CORRECCIÓN API: Usamos '/predict' según la configuración del servidor de Render
+// URL de la API
 const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
 // Constantes de Estado
@@ -19,19 +19,55 @@ const EXAMPLE_IMAGES = {
   'AOM': '/images/AOM.jpg',
 };
 
-// Componente principal de la aplicación
-const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
-    const { isLoggedIn, logout, token } = useAuth(); // 🚨 Usar el hook de autenticación
+// ----------------------------------------------------
+// ✅ COMPONENTE: Barra de Navegación
+// ----------------------------------------------------
+const NavbarContent = ({ logout, isLoggedIn }) => (
+    <nav className="flex items-center justify-between w-full mb-8 px-6 py-4 bg-white shadow-lg">
+        <div className="flex flex-col">
+            <h1 className="text-xl font-extrabold text-gray-900">
+                👂 Oido IA Match
+            </h1>
+            <p className="text-xs text-gray-500">
+                Herramienta de apoyo al diagnóstico rápido.
+            </p>
+        </div>
+        
+        {isLoggedIn && (
+            <button
+                onClick={logout}
+                className="text-sm px-4 py-2 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
+            >
+                Cerrar Sesión
+            </button>
+        )}
+        {!isLoggedIn && (
+            <span className="text-sm text-indigo-600 font-semibold">Acceso Requerido</span>
+        )}
+    </nav>
+);
 
-    // Si no está logeado, mostrar solo el Login
+
+// Componente principal de la aplicación
+const App = () => {
+    const { isLoggedIn, logout, token } = useAuth(); 
+
+    // ----------------------------------------------------
+    // VISTA DE LOGIN (NO AUTENTICADO)
+    // ----------------------------------------------------
     if (!isLoggedIn) {
-        return <Login />;
+        return (
+            <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
+                <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
+                <div className="flex flex-col items-center justify-center flex-grow w-full">
+                    <Login />
+                </div>
+            </div>
+        );
     }
     
-    // El resto del código solo se ejecuta si el usuario está logeado
-    
     // ----------------------------------------------------
-    // ESTADO Y LÓGICA DEL CLASIFICADOR
+    // ESTADO Y LÓGICA DEL CLASIFICADOR (AUTENTICADO)
     // ----------------------------------------------------
     const [step, setStep] = useState(STEPS.UPLOAD);
     const [file, setFile] = useState(null); 
@@ -41,6 +77,7 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
     const [isDragOver, setIsDragOver] = useState(false); 
 
     const resultData = useMemo(() => ({
+        // Nota: 'title' y 'description' se mantienen en caso de querer reintroducirlos
         'Normal': {
             title: "Diagnóstico: Oído Medio Sano (Normal)",
             description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
@@ -74,7 +111,6 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         processFile(e.target.files[0]);
     };
 
-    // (Otras funciones de Drag & Drop...)
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragOver(false);
@@ -107,7 +143,6 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         try {
             const response = await fetch(RENDER_API_URL, {
                 method: 'POST',
-                // 🚨 Enviar el Token en la cabecera (Esto lo hará seguro en el futuro)
                 headers: {
                     'Authorization': `Bearer ${token}` 
                 },
@@ -115,7 +150,6 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
             });
 
             if (response.status === 401) {
-                // Si la API devuelve 401 (No Autorizado)
                 throw new Error("Sesión expirada o no autorizada. Por favor, vuelve a iniciar sesión.");
             }
             if (!response.ok) {
@@ -163,9 +197,10 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         }
     };
     
-    // (Renderización de pasos omitida por brevedad, asume que está el código correcto)
+    // ----------------------------------------------------
+    // FUNCIONES DE RENDERIZADO DE PASOS
+    // ----------------------------------------------------
     const renderUploadStep = () => (
-        // ... Contenido de la carga de archivos
         <div className="flex flex-col items-center p-6 space-y-4">
             <div 
                 onDrop={handleDrop}
@@ -229,30 +264,26 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
         // Configuración de colores dinámica
         const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
         const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
-        const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
 
         return (
             <div className="p-6 space-y-8">
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
-                        {/* ✅ CORRECCIÓN 1: "Resultado Inmediato" cambiado a "Resultado" */}
+                        {/* ✅ CAMBIO: "Resultado Inmediato" -> "Resultado" */}
                         <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
                     </h2>
                     
                     <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
                         {classificationText}
                     </div>
-                    <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3>
-                </div>
-
-                <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
-                    <p className="text-sm">{data.description}</p>
+                    
+                    {/* 🚨 ELIMINADO: Título secundario y descripción */}
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="flex flex-col items-center space-y-3">
-                        {/* ✅ CORRECCIÓN 2: "Radiografía del Paciente:" cambiado a "Imágen:" */}
-                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imágen:</h3>
+                        {/* ✅ CAMBIO: "Radiografía del Paciente" -> "Imagen" */}
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imagen:</h3>
                         <img
                         src={previewUrl}
                         alt="Radiografía Clasificada"
@@ -320,20 +351,12 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
 
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-inter">
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-inter pt-0">
             
-            <main className="w-full max-w-3xl">
-                {/* 🚨 Botón de Logout */}
-                <div className="flex justify-end w-full mb-4">
-                    <button
-                        onClick={logout}
-                        className="text-xs px-3 py-1 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
-                    >
-                        Cerrar Sesión
-                    </button>
-                </div>
-                {/* 🚨 Título y Párrafo Corregidos */}
-                <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">👂 Oido IA Match</h1>
+            <NavbarContent isLoggedIn={isLoggedIn} logout={logout} /> 
+
+            <main className="w-full max-w-3xl"> 
+                
                 <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
 
                 {getStepIndicator()}
@@ -348,6 +371,6 @@ const App = ({ ClassifierContent }) => { // 🚨 Recibimos el componente interno
             </footer>
         </div>
     );
-};
+}; 
 
 export default App;
