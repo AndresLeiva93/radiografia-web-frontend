@@ -23,7 +23,6 @@ const EXAMPLE_IMAGES = {
 // ✅ COMPONENTE: Barra de Navegación (a w-full)
 // ----------------------------------------------------
 const NavbarContent = ({ logout, isLoggedIn }) => (
-    // La clase 'w-full' aquí garantiza que ocupe todo el ancho disponible
     <nav className="flex items-center justify-between w-full mb-8 px-6 py-4 bg-white shadow-lg">
         <div className="flex flex-col">
             <h1 className="text-xl font-extrabold text-gray-900">
@@ -58,7 +57,6 @@ const App = () => {
     // ----------------------------------------------------
     if (!isLoggedIn) {
         return (
-            // Aquí el Navbar ya funciona bien porque este contenedor no tiene padding lateral que lo restrinja
             <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
                 <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
                 <div className="flex flex-col items-center justify-center flex-grow w-full">
@@ -265,28 +263,32 @@ const App = () => {
         // Configuración de colores dinámica
         const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
         const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
-        const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
+        // detailColor ya no es estrictamente necesario, pero se deja si se usa para algo más
+        // const detailColor = data.color === "green" ? "text-green-800 bg-green-50 border-green-200" : data.color === "red" ? "text-red-800 bg-red-50 border-red-200" : "text-orange-800 bg-orange-50 border-orange-200";
 
         return (
             <div className="p-6 space-y-8">
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
-                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado Inmediato"}</span>
                     </h2>
                     
                     <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
                         {classificationText}
                     </div>
-                    <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3>
+                    
+                    {/* 🚨 ELEMENTO ELIMINADO: Título secundario (Ej: Diagnóstico: Otitis Externa Aguda (AOE)) */}
+                    {/* <h3 className="text-lg font-bold text-gray-700 mt-2">{data.title}</h3> */}
                 </div>
 
-                <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
+                {/* 🚨 ELEMENTO ELIMINADO: Párrafo descriptivo */}
+                {/* <div className={`p-4 rounded-xl border-l-4 border-r-4 ${detailColor} shadow-md`}>
                     <p className="text-sm">{data.description}</p>
-                </div>
+                </div> */}
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="flex flex-col items-center space-y-3">
-                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imágen:</h3>
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Radiografía del Paciente:</h3>
                         <img
                         src={previewUrl}
                         alt="Radiografía Clasificada"
@@ -354,13 +356,11 @@ const App = () => {
 
 
     return (
-        // 🚨 1. CORRECCIÓN: Eliminamos 'items-center' y 'p-4' para liberar el Navbar
-        <div className="min-h-screen bg-gray-100 flex flex-col font-inter">
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-inter pt-0">
             
             <NavbarContent isLoggedIn={isLoggedIn} logout={logout} /> 
 
-            {/* 🚨 2. CORRECCIÓN: Agregamos 'mx-auto' y 'px-4' para centrar el contenido principal y darle padding */}
-            <main className="w-full max-w-3xl mx-auto px-4"> 
+            <main className="w-full max-w-3xl"> 
                 
                 <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
 
@@ -371,8 +371,7 @@ const App = () => {
                 </div>
             </main>
             
-            {/* 🚨 3. CORRECCIÓN: Centramos y restringimos el footer también */}
-            <footer className="mt-8 text-sm text-gray-500 w-full max-w-3xl mx-auto px-4 pb-4">
+            <footer className="mt-8 text-sm text-gray-500">
                 Desarrollado con React y Tailwind CSS
             </footer>
         </div>
