@@ -48,6 +48,7 @@ const App = () => {
     // ----------------------------------------------------
     // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE)
     // Inicializadas con un simple mensaje de carga
+    // Nota: Usamos la versión con fetch que corregimos previamente.
     // ----------------------------------------------------
     const PLACEHOLDER_DESC = "Cargando descripción...";
 
@@ -56,7 +57,6 @@ const App = () => {
     const [desc_AOM, setDesc_AOM] = useState(PLACEHOLDER_DESC);
     const [desc_NoNormal, setDesc_NoNormal] = useState(PLACEHOLDER_DESC);
     
-    // Mapeo para facilitar el proceso de fetch y usar los nombres exactos de los archivos
     const CLASSIFICATION_MAP = useMemo(() => ({
         'Normal': { setter: setDesc_Normal },
         'AOE': { setter: setDesc_AOE },
@@ -83,11 +83,9 @@ const App = () => {
                         const text = await response.text();
                         setter(text.trim()); // Establece la descripción del archivo
                     } else {
-                        // 404 o cualquier otro error HTTP
                         setter(DEFAULT_NOT_FOUND_MESSAGE); 
                     }
                 } catch (error) {
-                    // Error de red
                     setter(DEFAULT_NOT_FOUND_MESSAGE);
                 }
             }
@@ -124,9 +122,8 @@ const App = () => {
     }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); 
 
     // ----------------------------------------------------
-    // [RESTO DEL CÓDIGO DEL COMPONENTE]
+    // VISTA DE LOGIN (NO AUTENTICADO)
     // ----------------------------------------------------
-    
     if (!isLoggedIn) {
         return (
             <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
@@ -138,6 +135,9 @@ const App = () => {
         );
     }
     
+    // ----------------------------------------------------
+    // ESTADO Y LÓGICA DEL CLASIFICADOR (AUTENTICADO)
+    // ----------------------------------------------------
     const [step, setStep] = useState(STEPS.UPLOAD);
     const [file, setFile] = useState(null); 
     const [previewUrl, setPreviewUrl] = useState(null); 
@@ -146,12 +146,14 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
 
+    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
+            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
             const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
             
             images[className] = modules[path];
@@ -323,7 +325,7 @@ const App = () => {
 
         const data = resultData[classificationResult];
         
-        // 🚨 CAMBIO AQUÍ: Formatear 'NoNormal' como 'NO NORMAL'
+        // Formato para el resultado principal (ej: NO NORMAL)
         const classificationText = classificationResult === 'NoNormal' 
             ? 'NO NORMAL' 
             : classificationResult.toUpperCase(); 
@@ -367,27 +369,32 @@ const App = () => {
                         
                         {/* ✅ RENDERIZADO DINÁMICO de imágenes de ejemplo */}
                         <div className="grid grid-cols-2 gap-2"> 
-                            {Object.keys(dynamicExampleImages).map((key) => (
-                                // Contenedor principal de la tarjeta (vertical)
-                                <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
-                                    
-                                    {/* TÍTULO ARRIBA (Distribución 30% título / 70% espacio) */}
-                                    <div className="flex w-full items-center justify-between px-1">
-                                        <p className="text-left text-xs font-bold text-gray-800 w-1/3 truncate" title={key}>{key}</p> 
-                                        <div className="w-2/3"></div> 
+                            {Object.keys(dynamicExampleImages).map((key) => {
+                                // 1. Formatear la clave: Reemplazar 'NoNormal' por 'NO NORMAL' y pasar a mayúsculas.
+                                const displayKey = key.replace('NoNormal', 'NO NORMAL').toUpperCase();
+
+                                return (
+                                    // Contenedor principal de la tarjeta (vertical)
+                                    <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                        
+                                        {/* 🚨 TÍTULO ARRIBA: Simplificado para NO TRUNCAR y centrar */}
+                                        <div className="flex w-full items-center justify-center pt-1">
+                                            {/* Quitamos w-1/3 y truncate */}
+                                            <p className="text-center text-xs font-bold text-gray-800" title={displayKey}>{displayKey}</p> 
+                                        </div>
+                                        
+                                        {/* Contenedor de IMAGEN con PADDING (p-2) para achicarla */}
+                                        <div className="w-full p-2"> 
+                                            <img 
+                                                src={dynamicExampleImages[key]} 
+                                                alt={`Ejemplo de ${key}`} 
+                                                className="w-full h-auto object-cover rounded-md border-2 border-gray-100" 
+                                            />
+                                        </div>
+                                        
                                     </div>
-                                    
-                                    {/* 🚨 Contenedor de IMAGEN con PADDING (p-2) para achicarla */}
-                                    <div className="w-full p-2"> 
-                                        <img 
-                                            src={dynamicExampleImages[key]} 
-                                            alt={`Ejemplo de ${key}`} 
-                                            className="w-full h-auto object-cover rounded-md border-2 border-gray-100" 
-                                        />
-                                    </div>
-                                    
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         {/* ------------------------------------------- */}
 
