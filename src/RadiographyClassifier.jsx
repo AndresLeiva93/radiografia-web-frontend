@@ -43,12 +43,11 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
 
 // Componente principal de la aplicación
 const App = () => {
-    const { isLoggedIn, logout, token } = useAuth(); 
+    // 🚨 CAMBIO 1: Incluir 'isLoading' del contexto de autenticación
+    const { isLoggedIn, logout, token, isLoading } = useAuth(); 
 
     // ----------------------------------------------------
     // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE)
-    // Inicializadas con un simple mensaje de carga
-    // Nota: Usamos la versión con fetch que corregimos previamente.
     // ----------------------------------------------------
     const PLACEHOLDER_DESC = "Cargando descripción...";
 
@@ -66,7 +65,7 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH (Ruta de /descripcion/ corregida)
+    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH DE DESCRIPCIONES
     // ----------------------------------------------------
     useEffect(() => {
         const fetchDescriptions = async () => {
@@ -96,7 +95,7 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 3: BASE_CLASSIFICATIONS / resultData
+    // 💡 PASO 3: MAPEO DE RESULTADOS
     // ----------------------------------------------------
     const resultData = useMemo(() => ({
         'Normal': {
@@ -122,6 +121,21 @@ const App = () => {
     }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); 
 
     // ----------------------------------------------------
+    // 🚨 CAMBIO 2: VISTA DE CARGA (Para evitar la pantalla en blanco)
+    // ----------------------------------------------------
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex items-center justify-center font-inter">
+                <svg className="animate-spin h-8 w-8 text-indigo-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-lg font-medium text-gray-700">Cargando sesión...</p>
+            </div>
+        );
+    }
+    
+    // ----------------------------------------------------
     // VISTA DE LOGIN (NO AUTENTICADO)
     // ----------------------------------------------------
     if (!isLoggedIn) {
@@ -146,7 +160,7 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
 
-    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
+    // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
@@ -377,9 +391,8 @@ const App = () => {
                                     // Contenedor principal de la tarjeta (vertical)
                                     <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
                                         
-                                        {/* 🚨 TÍTULO ARRIBA: Simplificado para NO TRUNCAR y centrar */}
+                                        {/* TÍTULO ARRIBA: Ahora sin truncate para mostrar el texto completo */}
                                         <div className="flex w-full items-center justify-center pt-1">
-                                            {/* Quitamos w-1/3 y truncate */}
                                             <p className="text-center text-xs font-bold text-gray-800" title={displayKey}>{displayKey}</p> 
                                         </div>
                                         
@@ -458,7 +471,7 @@ const App = () => {
             </main>
             
             <footer className="mt-8 text-sm text-gray-500">
-              
+                
             </footer>
         </div>
     );
