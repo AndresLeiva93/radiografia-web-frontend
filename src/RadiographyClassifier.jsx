@@ -448,7 +448,7 @@ const App = () => {
 
             <main className="w-full max-w-3xl"> 
                 
-                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
+                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis.</p>
 
                 {getStepIndicator()}
 
