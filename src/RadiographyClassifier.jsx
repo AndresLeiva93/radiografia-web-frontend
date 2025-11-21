@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; // 🚨 IMPORTANTE: Añadimos useEffect y useState
+import React, { useState, useCallback, useMemo, useEffect } from 'react'; // 🚨 Imports corregidos
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -46,10 +46,7 @@ const App = () => {
     const { isLoggedIn, logout, token } = useAuth(); 
 
     // ----------------------------------------------------
-    // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE)
-    // 
-    // Estas variables almacenarán el texto del .txt o el mensaje de error.
-    // El texto inicial es la descripción por defecto que se muestra mientras carga.
+    // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE) - INICIALIZADAS CON VALORES POR DEFECTO
     // ----------------------------------------------------
     const DEFAULT_NORMAL_DESC = "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.";
     const DEFAULT_AOE_DESC = "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.";
@@ -61,17 +58,17 @@ const App = () => {
     const [desc_AOM, setDesc_AOM] = useState(DEFAULT_AOM_DESC);
     const [desc_NoNormal, setDesc_NoNormal] = useState(DEFAULT_NONORMAL_DESC);
     
-    // Mapeo para facilitar el proceso de fetch
+    // Mapeo para facilitar el proceso de fetch y usar los nombres exactos de los archivos
     const CLASSIFICATION_MAP = useMemo(() => ({
-        'Normal': { setter: setDesc_Normal, default: DEFAULT_NORMAL_DESC },
-        'AOE': { setter: setDesc_AOE, default: DEFAULT_AOE_DESC },
-        'AOM': { setter: setDesc_AOM, default: DEFAULT_AOM_DESC },
-        'NoNormal': { setter: setDesc_NoNormal, default: DEFAULT_NONORMAL_DESC },
+        'Normal': { setter: setDesc_Normal },
+        'AOE': { setter: setDesc_AOE },
+        'AOM': { setter: setDesc_AOM },
+        'NoNormal': { setter: setDesc_NoNormal },
     }), []);
 
 
     // ----------------------------------------------------
-    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH
+    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH (USA LA CLAVE EXACTA: Normal, AOE, etc.)
     // ----------------------------------------------------
     useEffect(() => {
         const fetchDescriptions = async () => {
@@ -80,7 +77,7 @@ const App = () => {
             for (const key in CLASSIFICATION_MAP) {
                 const { setter } = CLASSIFICATION_MAP[key];
                 
-                // Usamos la clave EXACTA (ej: 'Normal') para buscar el archivo (ej: /Normal.txt)
+                // 🚨 CLAVE: Usamos la clave EXACTA (ej: 'Normal') para buscar el archivo (ej: /Normal.txt)
                 try {
                     const response = await fetch(`/${key}.txt`); 
                     
@@ -88,11 +85,11 @@ const App = () => {
                         const text = await response.text();
                         setter(text.trim()); // Establece la descripción del archivo
                     } else {
-                        // 404 o cualquier otro error HTTP -> Usar mensaje de error
+                        // 404 o cualquier otro error HTTP
                         setter(DEFAULT_NOT_FOUND_MESSAGE); 
                     }
                 } catch (error) {
-                    // Error de red -> Usar mensaje de error
+                    // Error de red
                     setter(DEFAULT_NOT_FOUND_MESSAGE);
                 }
             }
@@ -103,34 +100,35 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 3: DEFINICIÓN DE BASE_CLASSIFICATIONS (resultData)
-    // 
-    // Usamos useMemo para que se redefina solo cuando las variables de descripción cambien.
+    // 💡 PASO 3: BASE_CLASSIFICATIONS / resultData (USA LAS VARIABLES DE ESTADO)
     // ----------------------------------------------------
     const resultData = useMemo(() => ({
         'Normal': {
             title: "Diagnóstico: Oído Medio Sano (Normal)",
-            description: desc_Normal, // <- Inyectada directamente del state
+            description: desc_Normal, // <- Inyectada del state
             color: "green",
         },
         'AOE': {
             title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: desc_AOE, // <- Inyectada directamente del state
-            color: "orange", // Color añadido
+            description: desc_AOE, // <- Inyectada del state
+            color: "orange",
         },
         'AOM': {
             title: "Diagnóstico: Otitis Media Aguda (AOM)",
-            description: desc_AOM, // <- Inyectada directamente del state
+            description: desc_AOM, // <- Inyectada del state
             color: "red",
         },
         'NoNormal': {
             title: "Diagnóstico: Otitis Media",
-            description: desc_NoNormal, // <- Inyectada directamente del state
+            description: desc_NoNormal, // <- Inyectada del state
             color: "red",
         }
     }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); // Depende de las variables de estado
 
-
+    // ----------------------------------------------------
+    // [RESTO DEL COMPONENTE INALTERADO]
+    // ----------------------------------------------------
+    
     // ----------------------------------------------------
     // VISTA DE LOGIN (NO AUTENTICADO)
     // ----------------------------------------------------
@@ -238,9 +236,7 @@ const App = () => {
             const result = await response.json();
             const classification = result?.prediccion; 
 
-            // Asegurar que la clasificación exista en resultData antes de continuar
             if (!classification || !resultData[classification]) {
-                // Esto podría pasar si la API devuelve una clase nueva que no está en resultData
                 throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
             }
             
