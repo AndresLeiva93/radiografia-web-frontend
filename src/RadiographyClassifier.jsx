@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -44,6 +44,25 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
 // Componente principal de la aplicación
 const App = () => {
     const { isLoggedIn, logout, token } = useAuth(); 
+    
+    // --- ESTADO Y CARGA DINÁMICA DE RECURSOS ---
+    // ✅ 1. NUEVO ESTADO para las descripciones cargadas
+    const [dynamicDescriptions, setDynamicDescriptions] = useState({});
+    
+    // ✅ 2. Carga dinámica de las descripciones de archivos .txt
+    useEffect(() => {
+        // Usa import.meta.glob para cargar todos los archivos .txt en /public/
+        const modules = import.meta.glob('/public/*.txt', { eager: true, as: 'raw' });
+        const descriptions = {};
+
+        for (const path in modules) {
+            const fileNameWithExt = path.split('/').pop();
+            // La CLASE es el nombre del archivo sin extensión (Ej: 'Normal' de 'Normal.txt')
+            const className = fileNameWithExt.split('.')[0]; 
+            descriptions[className] = modules[path];
+        }
+        setDynamicDescriptions(descriptions);
+    }, []); 
 
     // ----------------------------------------------------
     // VISTA DE LOGIN (NO AUTENTICADO)
@@ -69,28 +88,61 @@ const App = () => {
     const [error, setError] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false); 
 
-    const resultData = useMemo(() => ({
-        'Normal': {
-            title: "Diagnóstico: Oído Medio Sano (Normal)",
-            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
-            color: "green",
-        },
-        'AOE': {
-            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
-            color: "orange",
-        },
-        'AOM': {
-            title: "Diagnóstico: Otitis Media Aguda (AOM)",
-            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
-            color: "red",
-        },
-        'NoNormal': {
-            title: "Diagnóstico: Otitis Media",
-            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
-            color: "red",
-        }
-    }), []);
+    // ✅ 3. resultData: Se convierte en una función que usa las descripciones cargadas
+    const getResultData = useCallback((descriptions) => {
+        
+        // Define la estructura base (títulos, colores, etc.)
+        const baseData = {
+            'Normal': {
+                title: "Diagnóstico: Oído Medio Sano (Normal)",
+                description: "Cargando descripción...", // Placeholder
+                color: "green",
+            },
+            'AOE': {
+                title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+                description: "Cargando descripción...", // Placeholder
+                color: "orange",
+            },
+            'AOM': {
+                title: "Diagnóstico: Otitis Media Aguda (AOM)",
+                description: "Cargando descripción...", // Placeholder
+                color: "red",
+            },
+            'NoNormal': {
+                title: "Diagnóstico: Otitis Media",
+                description: "Cargando descripción...", // Placeholder
+                color: "red",
+            }
+        };
+
+        // Sobrescribe la descripción con el contenido dinámico si existe
+        // NOTA: 'Normal' y 'NoNormal' son las claves esperadas de los TXT
+        return Object.keys(baseData).reduce((acc, key) => {
+            let descriptionText = baseData[key].description;
+            
+            // Reemplazar la descripción base con el contenido del archivo .txt si está disponible
+            if (descriptions[key]) {
+                 descriptionText = descriptions[key].trim();
+            } else if (key === 'AOM' && descriptions['NoNormal']) {
+                // Caso especial: Si el modelo predice 'AOM' pero solo hay 'NoNormal.txt' 
+                // usa la descripción de 'NoNormal' (si el modelo de 2 clases es 'Normal'/'NoNormal').
+                 descriptionText = descriptions['NoNormal'].trim(); 
+            } else if (key === 'AOE' && descriptions['NoNormal']) {
+                // Caso especial: Si el modelo predice 'AOE' pero solo hay 'NoNormal.txt'
+                 descriptionText = descriptions['NoNormal'].trim(); 
+            }
+            
+            acc[key] = {
+                ...baseData[key],
+                description: descriptionText
+            };
+            return acc;
+        }, {});
+    }, []);
+
+    // ✅ 4. Usa useMemo para calcular resultData solo cuando cambian las descripciones cargadas.
+    const resultData = useMemo(() => getResultData(dynamicDescriptions), [dynamicDescriptions, getResultData]);
+    
 
     // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
@@ -175,6 +227,9 @@ const App = () => {
             const classification = result?.prediccion; 
 
             if (!classification || !resultData[classification]) {
+                // NOTA: Si la clasificación no existe, podría ser por una clase nueva. 
+                // Usaremos 'NoNormal' si no es 'Normal' como fallback para descripciones.
+                // Sin embargo, si la API es estricta con las clases, el error es mejor.
                 throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
             }
             
@@ -284,12 +339,19 @@ const App = () => {
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
                         {/* Título de Resultado */}
-                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{data.title}</span>
                     </h2>
                     
                     <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
                         {classificationText}
                     </div>
+
+                    {/* ✅ NUEVO: RENDERIZADO DE LA DESCRIPCIÓN */}
+                    <p className="mt-4 text-gray-700 text-sm md:text-base border-t border-b border-gray-200 py-3 px-2 mx-auto max-w-xl text-justify">
+                        {data.description}
+                    </p>
+                    {/* ------------------------------------------- */}
+
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
