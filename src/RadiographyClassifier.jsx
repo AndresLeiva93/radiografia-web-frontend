@@ -458,7 +458,7 @@ const App = () => {
             </main>
             
             <footer className="mt-8 text-sm text-gray-500">
-                Desarrollado con React y Tailwind CSS
+              
             </footer>
         </div>
     );
