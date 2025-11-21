@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; // 🚨 Imports corregidos
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -46,17 +46,15 @@ const App = () => {
     const { isLoggedIn, logout, token } = useAuth(); 
 
     // ----------------------------------------------------
-    // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE) - INICIALIZADAS CON VALORES POR DEFECTO
+    // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE)
+    // Inicializadas con un simple mensaje de carga
     // ----------------------------------------------------
-    const DEFAULT_NORMAL_DESC = "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.";
-    const DEFAULT_AOE_DESC = "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.";
-    const DEFAULT_AOM_DESC = "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.";
-    const DEFAULT_NONORMAL_DESC = "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.";
+    const PLACEHOLDER_DESC = "Cargando descripción...";
 
-    const [desc_Normal, setDesc_Normal] = useState(DEFAULT_NORMAL_DESC);
-    const [desc_AOE, setDesc_AOE] = useState(DEFAULT_AOE_DESC);
-    const [desc_AOM, setDesc_AOM] = useState(DEFAULT_AOM_DESC);
-    const [desc_NoNormal, setDesc_NoNormal] = useState(DEFAULT_NONORMAL_DESC);
+    const [desc_Normal, setDesc_Normal] = useState(PLACEHOLDER_DESC);
+    const [desc_AOE, setDesc_AOE] = useState(PLACEHOLDER_DESC);
+    const [desc_AOM, setDesc_AOM] = useState(PLACEHOLDER_DESC);
+    const [desc_NoNormal, setDesc_NoNormal] = useState(PLACEHOLDER_DESC);
     
     // Mapeo para facilitar el proceso de fetch y usar los nombres exactos de los archivos
     const CLASSIFICATION_MAP = useMemo(() => ({
@@ -68,7 +66,7 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH (USA LA CLAVE EXACTA: Normal, AOE, etc.)
+    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH
     // ----------------------------------------------------
     useEffect(() => {
         const fetchDescriptions = async () => {
@@ -77,7 +75,7 @@ const App = () => {
             for (const key in CLASSIFICATION_MAP) {
                 const { setter } = CLASSIFICATION_MAP[key];
                 
-                // 🚨 CLAVE: Usamos la clave EXACTA (ej: 'Normal') para buscar el archivo (ej: /Normal.txt)
+                // Usamos la clave EXACTA (ej: 'Normal') para buscar el archivo (ej: /Normal.txt)
                 try {
                     const response = await fetch(`/${key}.txt`); 
                     
@@ -100,7 +98,8 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 3: BASE_CLASSIFICATIONS / resultData (USA LAS VARIABLES DE ESTADO)
+    // 💡 PASO 3: BASE_CLASSIFICATIONS / resultData
+    // Usa las variables de estado que serán actualizadas por el fetch
     // ----------------------------------------------------
     const resultData = useMemo(() => ({
         'Normal': {
@@ -125,10 +124,6 @@ const App = () => {
         }
     }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); // Depende de las variables de estado
 
-    // ----------------------------------------------------
-    // [RESTO DEL COMPONENTE INALTERADO]
-    // ----------------------------------------------------
-    
     // ----------------------------------------------------
     // VISTA DE LOGIN (NO AUTENTICADO)
     // ----------------------------------------------------
