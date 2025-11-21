@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react'; // 🚨 IMPORTANTE: Añadimos useEffect
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -47,22 +47,37 @@ const App = () => {
 
     // --- ESTADO Y CARGA DINÁMICA DE RECURSOS ---
     
-    // ✅ 1. NUEVO ESTADO: Almacena las descripciones cargadas de los archivos .txt
+    // ✅ 1. ESTADO: Almacena las descripciones cargadas
     const [dynamicDescriptions, setDynamicDescriptions] = useState({});
 
-    // ✅ 2. Carga dinámica de las descripciones (con claves en minúsculas)
+    // ✅ 2. HOOK: Carga dinámica de las descripciones con FETCH (Método robusto para Vercel)
     useEffect(() => {
-        // Usa import.meta.glob para cargar todos los archivos .txt en /public/
-        const modules = import.meta.glob('/public/*.txt', { eager: true, as: 'raw' });
-        const descriptions = {};
+        const fetchDescriptions = async () => {
+            // Asegúrate de que estos nombres coincidan con tus archivos .txt en /public/
+            const fileNames = ['normal', 'nonormal', 'aoe', 'aom']; 
+            const loadedDescriptions = {};
 
-        for (const path in modules) {
-            const fileNameWithExt = path.split('/').pop();
-            // La clave se guarda en minúsculas (Ej: 'normal' de 'Normal.txt')
-            const classNameLower = fileNameWithExt.split('.')[0].toLowerCase(); 
-            descriptions[classNameLower] = modules[path].trim();
-        }
-        setDynamicDescriptions(descriptions);
+            for (const name of fileNames) {
+                // Intentamos cargar el archivo .txt directamente desde la URL pública
+                try {
+                    const response = await fetch(`/${name}.txt`); 
+                    
+                    if (response.ok) {
+                        const text = await response.text();
+                        // Almacenamos con la clave en minúsculas
+                        loadedDescriptions[name] = text.trim(); 
+                    } else {
+                        loadedDescriptions[name] = "Descripción no disponible."; 
+                    }
+                } catch (error) {
+                    console.error(`Error de red al intentar cargar ${name}.txt:`, error);
+                    loadedDescriptions[name] = "Descripción no disponible (Error de red).";
+                }
+            }
+            setDynamicDescriptions(loadedDescriptions);
+        };
+
+        fetchDescriptions();
     }, []); 
 
     // ----------------------------------------------------
@@ -90,14 +105,15 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
     
-    // ✅ 3. FUNCIÓN DE RESULTADO DINÁMICA (Mapea la descripción a la clave original)
+    // ✅ 3. FUNCIÓN DE RESULTADO DINÁMICA (Asegura la búsqueda con claves en minúsculas)
     const getResultData = useCallback((descriptions) => {
         
         // Estructura base con las claves de clasificación que esperamos de la API
+        // Estas claves ('Normal', 'AOE', etc.) deben coincidir con la respuesta de tu API
         const baseData = {
             'Normal': {
                 title: "Diagnóstico: Oído Medio Sano (Normal)",
-                description: "Cargando descripción...", // Placeholder por si falla
+                description: "Cargando descripción...", // Placeholder inicial
                 color: "green",
             },
             'AOE': {
@@ -121,15 +137,16 @@ const App = () => {
         return Object.keys(baseData).reduce((acc, key) => {
             let descriptionText = baseData[key].description;
             
-            // Convierte la clave original (ej: 'Normal') a minúsculas (ej: 'normal') para buscar
+            // Convertimos la clave de la API a minúsculas para buscar en 'dynamicDescriptions'
             const lowerKey = key.toLowerCase();
+            const desc = descriptions[lowerKey];
 
-            // 1. Si existe un archivo .txt con el nombre de la CLASE (en minúsculas), lo usa.
-            if (descriptions[lowerKey]) {
-                 descriptionText = descriptions[lowerKey];
+            // 1. Si existe una descripción cargada para la clave en minúsculas
+            if (desc && desc !== "Descripción no disponible.") {
+                 descriptionText = desc;
             } 
-            // 2. Si la predicción NO es 'normal' y existe un archivo 'nonormal.txt', lo usa como fallback.
-            else if (lowerKey !== 'normal' && descriptions['nonormal']) {
+            // 2. Fallback: Si no es 'normal' y tenemos el archivo 'nonormal' genérico, lo usamos
+            else if (lowerKey !== 'normal' && descriptions['nonormal'] && descriptions['nonormal'] !== "Descripción no disponible.") {
                  descriptionText = descriptions['nonormal']; 
             }
             
@@ -141,17 +158,20 @@ const App = () => {
         }, {});
     }, []);
 
-    // ✅ 4. Usa useMemo para calcular resultData solo cuando cambian las descripciones cargadas
+    // ✅ 4. Calcula resultData dinámicamente
     const resultData = useMemo(() => getResultData(dynamicDescriptions), [dynamicDescriptions, getResultData]);
     
     // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
+        // Mantenemos esta lógica con import.meta.glob ya que funciona mejor para assets internos
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
+            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
             const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
+            
             images[className] = modules[path];
         }
         return images;
