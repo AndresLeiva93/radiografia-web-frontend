@@ -48,6 +48,7 @@ const App = () => {
 
     // ----------------------------------------------------
     // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE)
+    // Inicializadas con un simple mensaje de carga
     // ----------------------------------------------------
     const PLACEHOLDER_DESC = "Cargando descripción...";
 
@@ -65,7 +66,7 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH DE DESCRIPCIONES
+    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH DE DESCRIPCIONES (Corregido)
     // ----------------------------------------------------
     useEffect(() => {
         const fetchDescriptions = async () => {
@@ -75,7 +76,7 @@ const App = () => {
                 const { setter } = CLASSIFICATION_MAP[key];
                 
                 try {
-                    // Ruta apuntando a /public/descripcion/{Clase}.txt
+                    // La ruta corregida apunta a /descripcion/{Clase}.txt
                     const response = await fetch(`/descripcion/${key}.txt`); 
                     
                     if (response.ok) {
@@ -121,7 +122,7 @@ const App = () => {
     }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); 
 
     // ----------------------------------------------------
-    // 🚨 CAMBIO 2: VISTA DE CARGA (Para evitar la pantalla en blanco)
+    // 🚨 CAMBIO 2: VISTA DE CARGA (Esperar a que `isLoading` sea false)
     // ----------------------------------------------------
     if (isLoading) {
         return (
@@ -134,7 +135,7 @@ const App = () => {
             </div>
         );
     }
-    
+
     // ----------------------------------------------------
     // VISTA DE LOGIN (NO AUTENTICADO)
     // ----------------------------------------------------
@@ -160,7 +161,7 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
 
-    // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
+    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
@@ -471,7 +472,6 @@ const App = () => {
             </main>
             
             <footer className="mt-8 text-sm text-gray-500">
-                
             </footer>
         </div>
     );
