@@ -1,198 +1,396 @@
-import React, { useState, useMemo } from 'react';
-import { Note, Image, FileText, XCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useAuth } from './AuthContext'; 
+import Login from './Login'; 
 
-/**
- * DATOS SIMULADOS: Representa lo que un servidor/API devolvería al escanear
- * la "carpeta Public" y leer los archivos .txt y .jpg/.png asociados a una clasificación.
- */
-const SIMULATED_DIAGNOSIS_DATA = {
-  // CLASIFICACIÓN 1: Completa
-  'NONNORMAL': {
-    descriptionText: "Inflamación grave del oído medio (Otitis Media), con posible perforación del tímpano. Se observa tejido granulado y restos de efusión. Se requiere atención médica inmediata para prevenir la pérdida auditiva.",
-    mainImageUrl: "https://placehold.co/400x400/228B22/FFFFFF?text=IMAGEN+PRINCIPAL+NONNORMAL",
-    examples: [
-      { name: "AOE", imageUrl: "https://placehold.co/200x200/CD5C5C/FFFFFF?text=AOE+.jpg" }, 
-      { name: "AOM", imageUrl: "https://placehold.co/200x200/F08080/FFFFFF?text=AOM+.jpg" }, 
-      { name: "Normal", imageUrl: "https://placehold.co/200x200/90EE90/000000?text=Normal+.jpg" },
-      { name: "Otitis", imageUrl: "https://placehold.co/200x200/ADD8E6/000000?text=Otitis+.png" },
-    ]
-  },
+// URL de la API
+const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
 
-  // CLASIFICACIÓN 2: Incompleta 
-  'NORMAL': {
-    descriptionText: "El tímpano se observa sano, translúcido y con reflejo luminoso claro. Los huesos del oído medio (martillo, yunque) son visibles. No hay signos de inflamación, infección o efusión. Estado saludable.",
-    mainImageUrl: "https://placehold.co/400x400/4682B4/FFFFFF?text=IMAGEN+PRINCIPAL+NORMAL",
-    examples: [
-      { name: "Sano", imageUrl: "https://placehold.co/200x200/87CEFA/000000?text=Sano+.png" },
-      { name: "Tímpano", imageUrl: "https://placehold.co/200x200/B0E0E6/000000?text=Timpano+.jpg" },
-    ]
-  },
-
-  // CLASIFICACIÓN 3: Faltante de descripción
-  'ERROR_CLASIFICACION': {
-    descriptionText: null, 
-    mainImageUrl: "https://placehold.co/400x400/FFA07A/FFFFFF?text=IMAGEN+PRINCIPAL+ERROR",
-    examples: [
-      { name: "Desconocido 1", imageUrl: "https://placehold.co/200x200/F08080/FFFFFF?text=Desconocido1+.jpg" },
-    ]
-  }
+// Constantes de Estado
+const STEPS = {
+  UPLOAD: 'upload',
+  PROCESSING: 'processing',
+  RESULT: 'result'
 };
 
+// ----------------------------------------------------
+// ✅ COMPONENTE: Barra de Navegación
+// ----------------------------------------------------
+const NavbarContent = ({ logout, isLoggedIn }) => (
+    <nav className="flex items-center justify-between w-full mb-8 px-6 py-4 bg-white shadow-lg">
+        <div className="flex flex-col">
+            <h1 className="text-xl font-extrabold text-gray-900">
+                👂 Oido IA Match
+            </h1>
+            <p className="text-xs text-gray-500">
+                Herramienta de apoyo al diagnóstico rápido.
+            </p>
+        </div>
+        
+        {isLoggedIn && (
+            <button
+                onClick={logout}
+                className="text-sm px-4 py-2 bg-red-500 text-white font-medium rounded-lg shadow-md hover:bg-red-600 transition duration-200"
+            >
+                Cerrar Sesión
+            </button>
+        )}
+        {!isLoggedIn && (
+            <span className="text-sm text-indigo-600 font-semibold">Acceso Requerido</span>
+        )}
+    </nav>
+);
+
+
+// Componente principal de la aplicación
 const App = () => {
-  // Estado para simular el resultado de la clasificación del modelo
-  const [classificationResult, setClassificationResult] = useState('NONNORMAL');
+    const { isLoggedIn, logout, token } = useAuth(); 
 
-  // useMemo para obtener los datos relevantes basados en el resultado de la clasificación
-  const currentData = useMemo(() => {
-    return SIMULATED_DIAGNOSIS_DATA[classificationResult] || { 
-      descriptionText: "No hay datos disponibles para esta clasificación.", 
-      mainImageUrl: "https://placehold.co/400x400/808080/FFFFFF?text=SIN+DATOS", 
-      examples: [] 
+    // ----------------------------------------------------
+    // VISTA DE LOGIN (NO AUTENTICADO)
+    // ----------------------------------------------------
+    if (!isLoggedIn) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
+                <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
+                <div className="flex flex-col items-center justify-center flex-grow w-full">
+                    <Login />
+                </div>
+            </div>
+        );
+    }
+    
+    // ----------------------------------------------------
+    // ESTADO Y LÓGICA DEL CLASIFICADOR (AUTENTICADO)
+    // ----------------------------------------------------
+    const [step, setStep] = useState(STEPS.UPLOAD);
+    const [file, setFile] = useState(null); 
+    const [previewUrl, setPreviewUrl] = useState(null); 
+    const [classificationResult, setClassificationResult] = useState(null); 
+    const [error, setError] = useState(null);
+    const [isDragOver, setIsDragOver] = useState(false); 
+
+    const resultData = useMemo(() => ({
+        'Normal': {
+            title: "Diagnóstico: Oído Medio Sano (Normal)",
+            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
+            color: "green",
+        },
+        'AOE': {
+            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
+            color: "orange",
+        },
+        'AOM': {
+            title: "Diagnóstico: Otitis Media Aguda (AOM)",
+            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
+            color: "red",
+        }
+    }), []);
+
+    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
+    const dynamicExampleImages = useMemo(() => {
+        // Usa import.meta.glob para cargar todas las imágenes .jpg en /public/images/
+        const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
+        const images = {};
+
+        for (const path in modules) {
+            const fileNameWithExt = path.split('/').pop();
+            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
+            const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
+            
+            images[className] = modules[path];
+        }
+        return images;
+    }, []);
+    // ----------------------------------------------------
+    
+    const processFile = (selectedFile) => {
+        if (selectedFile && selectedFile.type.startsWith('image/')) {
+            setFile(selectedFile);
+            setPreviewUrl(URL.createObjectURL(selectedFile));
+            setError(null);
+        } else {
+            setError("Tipo de archivo no válido. Por favor, sube una imagen (JPG/PNG).");
+            setFile(null);
+            setPreviewUrl(null);
+        }
     };
-  }, [classificationResult]);
 
-  // Manejador para cambiar la clasificación simulada
-  const handleSimulateChange = (newClassification) => {
-    setClassificationResult(newClassification);
-  };
-  
-  // Componente de utilidad para mostrar imágenes con un fallback en caso de error
-  const ImageWithFallback = ({ src, alt }) => {
-    const [imageSrc, setImageSrc] = useState(src);
-    const [hasError, setHasError] = useState(false);
-
-    const handleError = () => {
-      if (!hasError) {
-        setImageSrc(https://placehold.co/200x200/808080/FFFFFF?text=Error+en+Imagen);
-        setHasError(true);
-      }
+    const handleFileChange = (e) => {
+        processFile(e.target.files[0]);
     };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const files = e.dataTransfer.files;
+        if (files.length) {
+          processFile(files[0]);
+        }
+    };
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    };
+    const handleDragLeave = () => {
+        setIsDragOver(false);
+    };
+
+
+    const classifyImage = useCallback(async () => {
+        if (!file) {
+          setError("Por favor, sube una imagen primero.");
+          return;
+        }
+
+        setStep(STEPS.PROCESSING);
+        setError(null);
+
+        const formData = new FormData();
+        formData.append('image', file, file.name); 
+
+        try {
+            const response = await fetch(RENDER_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: formData,
+            });
+
+            if (response.status === 401) {
+                throw new Error("Sesión expirada o no autorizada. Por favor, vuelve a iniciar sesión.");
+            }
+            if (!response.ok) {
+                const statusText = response.statusText || 'Error Desconocido';
+                throw new Error(`Error HTTP: ${response.status}. ${statusText}`);
+            }
+
+            const result = await response.json();
+            const classification = result?.prediccion; 
+
+            if (!classification || !resultData[classification]) {
+                throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
+            }
+            
+            setClassificationResult(classification);
+            setStep(STEPS.RESULT);
+
+        } catch (err) {
+            console.error("Error en la clasificación:", err);
+            
+            let displayError = `Error: ${err.message}. Verifica el formato de la API.`;
+
+            if (err.message.includes("401")) {
+                 displayError = "⚠️ Tu sesión ha expirado o no estás autorizado. Por favor, inicia sesión de nuevo.";
+            } else if (err.message.includes("Error HTTP: 404")) {
+                 displayError = "⚠️ Error HTTP 404: La URL de la API es incorrecta. Confirma que la ruta del servidor de Render es la correcta (debe ser /predict).";
+            } else if (err.message.includes("Error HTTP: 50") || err.message.includes("failed to fetch")) {
+                displayError = "⚠️ Falló la conexión. La causa más probable es un error de red/servidor. Inténtalo de nuevo en 30 segundos.";
+            }
+
+            setError(displayError);
+            setStep(STEPS.UPLOAD); 
+            setClassificationResult(null);
+        }
+    }, [file, resultData, token]);
+
+    const handleReset = () => {
+        setStep(STEPS.UPLOAD);
+        setFile(null);
+        setClassificationResult(null);
+        setError(null);
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
+        }
+    };
+    
+    // ----------------------------------------------------
+    // FUNCIONES DE RENDERIZADO DE PASOS
+    // ----------------------------------------------------
+    const renderUploadStep = () => (
+        <div className="flex flex-col items-center p-6 space-y-4">
+            <div 
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={`flex items-center justify-center w-full h-48 border-2 border-dashed rounded-xl transition-colors duration-200 
+                ${isDragOver ? 'border-indigo-600 bg-indigo-100' : 'border-indigo-400 bg-indigo-50'}
+                `}
+            >
+                {previewUrl ? (
+                <img 
+                    src={previewUrl} 
+                    alt="Radiografía Previa" 
+                    className="h-full w-auto max-h-44 object-contain rounded-lg shadow-lg"
+                />
+                ) : (
+                <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-800 font-semibold transition duration-150 ease-in-out text-center px-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span className='text-sm sm:text-base'>Haz clic para seleccionar o arrastra una imagen aquí (JPG/PNG)</span>
+                    <input id="file-upload" type="file" className="hidden" accept="image/jpeg,image/png" onChange={handleFileChange} />
+                </label>
+                )}
+            </div>
+
+            {error && (
+                <p className="text-sm font-medium text-red-600 bg-red-100 p-3 rounded-xl w-full text-center border border-red-300 shadow-sm">
+                {error}
+                </p>
+            )}
+
+            {file && (
+                <button
+                onClick={classifyImage}
+                className="w-full px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-[1.02] disabled:opacity-50"
+                >
+                🚀 Paso 2: Clasificar Radiografía
+                </button>
+            )}
+        </div>
+    );
+    
+    const renderProcessingStep = () => (
+        <div className="flex flex-col items-center justify-center p-8 space-y-6">
+            <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.93 8.93 0 0115 19H5M20 9V4M4 12a8 8 0 018-8v0a8 8 0 018 8v0a8 8 0 01-8 8v0a8 8 0 01-8-8z" />
+            </svg>
+            <h2 className="text-xl font-bold text-indigo-800">Analizando con Inteligencia Artificial...</h2>
+            <p className="text-gray-600">Esto puede tomar unos segundos.</p>
+        </div>
+    );
+
+    const renderResultStep = () => {
+        if (!classificationResult) return renderUploadStep();
+
+        const data = resultData[classificationResult];
+        const isHealthy = classificationResult === 'Normal';
+        const classificationText = classificationResult.toUpperCase();
+        
+        // Configuración de colores dinámica
+        const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
+        const statusRing = data.color === "green" ? "ring-green-300" : data.color === "red" ? "ring-red-300" : "ring-orange-300";
+
+        return (
+            <div className="p-6 space-y-8">
+                <div className="text-center">
+                    <h2 className="text-2xl font-extrabold text-gray-900">
+                        {/* Título de Resultado */}
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
+                    </h2>
+                    
+                    <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
+                        {classificationText}
+                    </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 items-start">
+                    <div className="flex flex-col items-center space-y-3">
+                        {/* Título de Imagen */}
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imagen:</h3>
+                        <img
+                        src={previewUrl}
+                        alt="Radiografía Clasificada"
+                        className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
+                        
+                        {/* ✅ RENDERIZADO DINÁMICO en 2 COLUMNAS (con distribución interna 70%-30% y padding p-2) */}
+                        <div className="grid grid-cols-2 gap-2"> 
+                            {Object.keys(dynamicExampleImages).map((key) => (
+                                // Contenedor principal de la tarjeta (vertical)
+                                <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                    
+                                    {/* TÍTULO ARRIBA (Distribución 30% título / 70% espacio) */}
+                                    <div className="flex w-full items-center justify-between px-1">
+                                        <p className="text-left text-xs font-bold text-gray-800 w-1/3 truncate" title={key}>{key}</p> 
+                                        <div className="w-2/3"></div> 
+                                    </div>
+                                    
+                                    {/* 🚨 Contenedor de IMAGEN con PADDING (p-2) para achicarla */}
+                                    <div className="w-full p-2"> 
+                                        <img 
+                                            src={dynamicExampleImages[key]} 
+                                            alt={`Ejemplo de ${key}`} 
+                                            className="w-full h-auto object-cover rounded-md border-2 border-gray-100" 
+                                        />
+                                    </div>
+                                    
+                                </div>
+                            ))}
+                        </div>
+                        {/* ------------------------------------------- */}
+
+                    </div>
+                </div>
+
+                <button
+                    onClick={handleReset}
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.01]"
+                >
+                    Reiniciar Clasificación
+                </button>
+            </div>
+        );
+    };
+
+    const renderCurrentStep = () => {
+        switch (step) {
+          case STEPS.PROCESSING:
+            return renderProcessingStep();
+          case STEPS.RESULT:
+            return renderResultStep();
+          case STEPS.UPLOAD:
+          default:
+            return renderUploadStep();
+        }
+    };
+
+    const getStepIndicator = () => {
+        let currentStep;
+        switch (step) {
+            case STEPS.UPLOAD: currentStep = 1; break;
+            case STEPS.PROCESSING: currentStep = 2; break;
+            case STEPS.RESULT: currentStep = 3; break;
+            default: currentStep = 1;
+        }
+        return (
+            <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
+            </div>
+        );
+    };
+
 
     return (
-      <img
-        src={imageSrc}
-        alt={alt}
-        className="w-full h-full object-cover rounded-lg"
-        onError={handleError}
-      />
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-inter pt-0">
+            
+            <NavbarContent isLoggedIn={isLoggedIn} logout={logout} /> 
+
+            <main className="w-full max-w-3xl"> 
+                
+                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
+
+                {getStepIndicator()}
+
+                <div className="bg-white rounded-2xl shadow-2xl transition-all duration-500 ease-in-out">
+                    {renderCurrentStep()}
+                </div>
+            </main>
+            
+            <footer className="mt-8 text-sm text-gray-500">
+                Desarrollado con React y Tailwind CSS
+            </footer>
+        </div>
     );
-  };
-
-
-  return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans antialiased">
-      <header className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold text-gray-800">
-          Resultado del Diagnóstico Automatizado
-        </h1>
-        <p className="text-lg text-gray-500 mt-2">
-          Carga dinámica de datos y ejemplos visuales.
-        </p>
-      </header>
-
-      {/* Selector de Clasificación Simulado (Botones de prueba) */}
-      <div className="mb-8 p-4 bg-white rounded-xl shadow-lg max-w-2xl mx-auto">
-        <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
-          <RefreshCw className="w-5 h-5 mr-2 text-indigo-500" />
-          Simular Resultado del Modelo
-        </h3>
-        <div className="flex flex-wrap justify-center gap-4">
-          {Object.keys(SIMULATED_DIAGNOSIS_DATA).map(key => (
-            <button
-              key={key}
-              onClick={() => handleSimulateChange(key)}
-              className={`px-4 py-2 text-sm font-bold rounded-full transition-all duration-200 shadow-md ${
-                classificationResult === key
-                  ? 'bg-indigo-600 text-white shadow-indigo-400/50 scale-105'
-                  : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-              }`}
-            >
-              Clasificación: {key}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <main className="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-2xl">
-        {/* Resultado Principal */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-red-600 mb-2">
-            Resultado
-          </h2>
-          <span className="inline-block px-6 py-2 text-3xl font-extrabold text-white bg-red-500 rounded-full shadow-xl shadow-red-300/60 uppercase tracking-wider">
-            {classificationResult}
-          </span>
-        </div>
-
-        {/* Sección de Descripción y Visualización (Grid de 3 Columnas) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Columna de Descripción (Lee el archivo .txt simulado) */}
-          <div className="lg:col-span-1 border-r border-gray-200 pr-6">
-            <h3 className="text-xl font-bold text-gray-700 mb-4 flex items-center">
-              <FileText className="w-5 h-5 mr-2 text-indigo-500" />
-              Descripción del Diagnóstico:
-            </h3>
-            <div className="p-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 min-h-[150px]">
-              {currentData.descriptionText ? (
-                // Muestra la descripción si el archivo .txt existe
-                <p className="text-gray-800 whitespace-pre-wrap">
-                  {currentData.descriptionText}
-                </p>
-              ) : (
-                // Muestra el mensaje de error si el archivo .txt no se encontró
-                <div className="text-red-500 font-semibold flex items-center justify-center h-full text-center">
-                  <XCircle className="w-5 h-5 mr-2" />
-                  {`Falta cargar el archivo de descripción: '${classificationResult}.txt'`}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Columna de Imagen Principal */}
-          <div className="lg:col-span-1 flex flex-col items-center">
-            <h3 className="text-xl font-bold text-gray-700 mb-4 flex items-center">
-              <Image className="w-5 h-5 mr-2 text-indigo-500" />
-              Imagen Principal:
-            </h3>
-            <div className="w-full max-w-xs aspect-square p-1 border-4 border-indigo-500 rounded-xl shadow-xl transition-all hover:shadow-2xl">
-              <ImageWithFallback 
-                src={currentData.mainImageUrl} 
-                alt={`Imagen principal para ${classificationResult}`} 
-              />
-            </div>
-          </div>
-
-          {/* Columna de Ejemplos de Clasificación (Solo carga .jpg/.png simulados) */}
-          <div className="lg:col-span-1 border-l border-gray-200 pl-6">
-            <h3 className="text-xl font-bold text-gray-700 mb-4 flex items-center">
-              <Note className="w-5 h-5 mr-2 text-indigo-500" />
-              Ejemplos de Clasificación:
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {currentData.examples.length > 0 ? (
-                currentData.examples.map((example, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-xl shadow-md border border-gray-200 text-center">
-                    <p className="text-sm font-semibold text-gray-600 mb-2">{example.name}</p>
-                    <div className="aspect-square border border-indigo-300 rounded-lg overflow-hidden">
-                      <ImageWithFallback 
-                        src={example.imageUrl} 
-                        alt={`Ejemplo de ${example.name}`} 
-                      />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-2 text-center text-gray-500 p-4 border rounded-lg bg-yellow-50">
-                  No se encontraron imágenes (.jpg/.png) de ejemplo para esta clase.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
+}; 
 
 export default App;
