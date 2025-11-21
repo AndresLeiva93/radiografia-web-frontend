@@ -66,7 +66,7 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH
+    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH (¡RUTA CORREGIDA!)
     // ----------------------------------------------------
     useEffect(() => {
         const fetchDescriptions = async () => {
@@ -75,9 +75,9 @@ const App = () => {
             for (const key in CLASSIFICATION_MAP) {
                 const { setter } = CLASSIFICATION_MAP[key];
                 
-                // Usamos la clave EXACTA (ej: 'Normal') para buscar el archivo (ej: /Normal.txt)
+                // 🚨 RUTA CORREGIDA: Agregamos /descripcion/
                 try {
-                    const response = await fetch(`/${key}.txt`); 
+                    const response = await fetch(`/descripcion/${key}.txt`); 
                     
                     if (response.ok) {
                         const text = await response.text();
