@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; 
+import React, { useState, useCallback, useMemo, useEffect } from 'react'; // 🚨 IMPORTANTE: Añadimos useEffect y useState
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -45,100 +45,94 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
 const App = () => {
     const { isLoggedIn, logout, token } = useAuth(); 
 
-    // --- Definición de las Clasificaciones Base ---
-    // Si agregas una nueva clase ('NewClass'), automáticamente se buscará un archivo /NewClass.txt
-    const BASE_CLASSIFICATIONS = useMemo(() => ({
-        'Normal': {
-            title: "Diagnóstico: Oído Medio Sano (Normal)",
-            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
-            color: "green",
-        },
-        'AOE': {
-            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
-            color: "orange",
-        },
-        'AOM': {
-            title: "Diagnóstico: Otitis Media Aguda (AOM)",
-            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
-            color: "red",
-        },
-        'NoNormal': {
-            title: "Diagnóstico: Otitis Media",
-            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
-            color: "red",
-        }
+    // ----------------------------------------------------
+    // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE)
+    // 
+    // Estas variables almacenarán el texto del .txt o el mensaje de error.
+    // El texto inicial es la descripción por defecto que se muestra mientras carga.
+    // ----------------------------------------------------
+    const DEFAULT_NORMAL_DESC = "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.";
+    const DEFAULT_AOE_DESC = "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.";
+    const DEFAULT_AOM_DESC = "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.";
+    const DEFAULT_NONORMAL_DESC = "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.";
+
+    const [desc_Normal, setDesc_Normal] = useState(DEFAULT_NORMAL_DESC);
+    const [desc_AOE, setDesc_AOE] = useState(DEFAULT_AOE_DESC);
+    const [desc_AOM, setDesc_AOM] = useState(DEFAULT_AOM_DESC);
+    const [desc_NoNormal, setDesc_NoNormal] = useState(DEFAULT_NONORMAL_DESC);
+    
+    // Mapeo para facilitar el proceso de fetch
+    const CLASSIFICATION_MAP = useMemo(() => ({
+        'Normal': { setter: setDesc_Normal, default: DEFAULT_NORMAL_DESC },
+        'AOE': { setter: setDesc_AOE, default: DEFAULT_AOE_DESC },
+        'AOM': { setter: setDesc_AOM, default: DEFAULT_AOM_DESC },
+        'NoNormal': { setter: setDesc_NoNormal, default: DEFAULT_NONORMAL_DESC },
     }), []);
 
 
-    // --- ESTADO Y CARGA DINÁMICA DE RECURSOS ---
-    
-    // ✅ 1. ESTADO: Almacena las descripciones cargadas o el mensaje de error
-    const [dynamicDescriptions, setDynamicDescriptions] = useState({});
-
-    // ✅ 2. HOOK: Carga dinámica de las descripciones con FETCH
+    // ----------------------------------------------------
+    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH
+    // ----------------------------------------------------
     useEffect(() => {
         const fetchDescriptions = async () => {
-            // Obtenemos dinámicamente las claves que necesitamos buscar (ej: 'Normal', 'AOE', etc.)
-            const classificationKeys = Object.keys(BASE_CLASSIFICATIONS); 
-            const loadedDescriptions = {};
             const DEFAULT_NOT_FOUND_MESSAGE = "No se encuentra descripción";
 
-            for (const key of classificationKeys) {
-                // Intentamos cargar el archivo .txt usando el nombre exacto de la clase
-                // Esto soporta la mayúscula/minúscula que tienes en el archivo de GitHub (ej: /Normal.txt)
+            for (const key in CLASSIFICATION_MAP) {
+                const { setter } = CLASSIFICATION_MAP[key];
+                
+                // Usamos la clave EXACTA (ej: 'Normal') para buscar el archivo (ej: /Normal.txt)
                 try {
                     const response = await fetch(`/${key}.txt`); 
                     
                     if (response.ok) {
                         const text = await response.text();
-                        // Almacenamos con la clave original (manteniendo el casing de la API)
-                        loadedDescriptions[key] = text.trim(); 
+                        setter(text.trim()); // Establece la descripción del archivo
                     } else {
-                        // 404 o cualquier otro error HTTP
-                        loadedDescriptions[key] = DEFAULT_NOT_FOUND_MESSAGE; 
+                        // 404 o cualquier otro error HTTP -> Usar mensaje de error
+                        setter(DEFAULT_NOT_FOUND_MESSAGE); 
                     }
                 } catch (error) {
-                    // Error de red
-                    loadedDescriptions[key] = DEFAULT_NOT_FOUND_MESSAGE;
+                    // Error de red -> Usar mensaje de error
+                    setter(DEFAULT_NOT_FOUND_MESSAGE);
                 }
             }
-            setDynamicDescriptions(loadedDescriptions);
         };
 
         fetchDescriptions();
-    }, [BASE_CLASSIFICATIONS]); // Dependencia para que se ejecute si la base cambia
+    }, [CLASSIFICATION_MAP]); 
 
-    // ✅ 3. Combina la DATA BASE con las DESCRIPCIONES CARGADAS (o fallback)
-    const resultData = useMemo(() => {
-        // Inicializamos con la estructura base
-        const mergedData = { ...BASE_CLASSIFICATIONS };
 
-        Object.keys(mergedData).forEach(key => {
-            // Usamos la descripción cargada si existe y no es el mensaje de error
-            const fetchedDesc = dynamicDescriptions[key];
+    // ----------------------------------------------------
+    // 💡 PASO 3: DEFINICIÓN DE BASE_CLASSIFICATIONS (resultData)
+    // 
+    // Usamos useMemo para que se redefina solo cuando las variables de descripción cambien.
+    // ----------------------------------------------------
+    const resultData = useMemo(() => ({
+        'Normal': {
+            title: "Diagnóstico: Oído Medio Sano (Normal)",
+            description: desc_Normal, // <- Inyectada directamente del state
+            color: "green",
+        },
+        'AOE': {
+            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+            description: desc_AOE, // <- Inyectada directamente del state
+            color: "orange", // Color añadido
+        },
+        'AOM': {
+            title: "Diagnóstico: Otitis Media Aguda (AOM)",
+            description: desc_AOM, // <- Inyectada directamente del state
+            color: "red",
+        },
+        'NoNormal': {
+            title: "Diagnóstico: Otitis Media",
+            description: desc_NoNormal, // <- Inyectada directamente del state
+            color: "red",
+        }
+    }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); // Depende de las variables de estado
 
-            if (fetchedDesc && fetchedDesc !== "No se encuentra descripción") {
-                mergedData[key] = {
-                    ...mergedData[key],
-                    description: fetchedDesc
-                };
-            } else if (fetchedDesc === "No se encuentra descripción") {
-                 // Si la descripción no se encontró, usamos el mensaje de error solicitado
-                mergedData[key] = {
-                    ...mergedData[key],
-                    description: "No se encuentra descripción"
-                };
-            } 
-            // Si fetchedDesc es undefined (aún cargando), se queda con la 'description' inicial
-        });
 
-        return mergedData;
-    }, [BASE_CLASSIFICATIONS, dynamicDescriptions]);
-    
     // ----------------------------------------------------
     // VISTA DE LOGIN (NO AUTENTICADO)
-    // ... (sin cambios)
     // ----------------------------------------------------
     if (!isLoggedIn) {
         return (
@@ -162,14 +156,17 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
 
-    // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
+    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
+        // Usa import.meta.glob para cargar todas las imágenes .jpg en /public/images/
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
+            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
             const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
+            
             images[className] = modules[path];
         }
         return images;
@@ -241,7 +238,9 @@ const App = () => {
             const result = await response.json();
             const classification = result?.prediccion; 
 
+            // Asegurar que la clasificación exista en resultData antes de continuar
             if (!classification || !resultData[classification]) {
+                // Esto podría pasar si la API devuelve una clase nueva que no está en resultData
                 throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
             }
             
@@ -339,7 +338,6 @@ const App = () => {
         if (!classificationResult) return renderUploadStep();
 
         const data = resultData[classificationResult];
-        const isHealthy = classificationResult === 'Normal';
         const classificationText = classificationResult.toUpperCase();
         
         // Configuración de colores dinámica
@@ -358,7 +356,7 @@ const App = () => {
                         {classificationText}
                     </div>
 
-                    {/* ✅ RENDERIZADO DE LA DESCRIPCIÓN */}
+                    {/* ✅ RENDERIZADO DE LA DESCRIPCIÓN (Asignada dinámicamente) */}
                     <p className="mt-4 text-gray-700 text-sm md:text-base border-t border-b border-gray-200 py-3 px-2 mx-auto max-w-xl text-justify">
                         {data.description}
                     </p>
@@ -379,14 +377,19 @@ const App = () => {
                     <div className="space-y-3">
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
                         
-                        {/* RENDERIZADO DINÁMICO de imágenes de ejemplo */}
+                        {/* ✅ RENDERIZADO DINÁMICO de imágenes de ejemplo */}
                         <div className="grid grid-cols-2 gap-2"> 
                             {Object.keys(dynamicExampleImages).map((key) => (
+                                // Contenedor principal de la tarjeta (vertical)
                                 <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
+                                    
+                                    {/* TÍTULO ARRIBA (Distribución 30% título / 70% espacio) */}
                                     <div className="flex w-full items-center justify-between px-1">
                                         <p className="text-left text-xs font-bold text-gray-800 w-1/3 truncate" title={key}>{key}</p> 
                                         <div className="w-2/3"></div> 
                                     </div>
+                                    
+                                    {/* 🚨 Contenedor de IMAGEN con PADDING (p-2) para achicarla */}
                                     <div className="w-full p-2"> 
                                         <img 
                                             src={dynamicExampleImages[key]} 
@@ -394,6 +397,7 @@ const App = () => {
                                             className="w-full h-auto object-cover rounded-md border-2 border-gray-100" 
                                         />
                                     </div>
+                                    
                                 </div>
                             ))}
                         </div>
