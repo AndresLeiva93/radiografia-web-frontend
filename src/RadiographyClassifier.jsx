@@ -66,7 +66,7 @@ const App = () => {
 
 
     // ----------------------------------------------------
-    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH (¡RUTA CORREGIDA!)
+    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH (Ruta de /descripcion/ corregida)
     // ----------------------------------------------------
     useEffect(() => {
         const fetchDescriptions = async () => {
@@ -75,8 +75,8 @@ const App = () => {
             for (const key in CLASSIFICATION_MAP) {
                 const { setter } = CLASSIFICATION_MAP[key];
                 
-                // 🚨 RUTA CORREGIDA: Agregamos /descripcion/
                 try {
+                    // Ruta apuntando a /public/descripcion/{Clase}.txt
                     const response = await fetch(`/descripcion/${key}.txt`); 
                     
                     if (response.ok) {
@@ -99,34 +99,34 @@ const App = () => {
 
     // ----------------------------------------------------
     // 💡 PASO 3: BASE_CLASSIFICATIONS / resultData
-    // Usa las variables de estado que serán actualizadas por el fetch
     // ----------------------------------------------------
     const resultData = useMemo(() => ({
         'Normal': {
             title: "Diagnóstico: Oído Medio Sano (Normal)",
-            description: desc_Normal, // <- Inyectada del state
+            description: desc_Normal, 
             color: "green",
         },
         'AOE': {
             title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: desc_AOE, // <- Inyectada del state
+            description: desc_AOE, 
             color: "orange",
         },
         'AOM': {
             title: "Diagnóstico: Otitis Media Aguda (AOM)",
-            description: desc_AOM, // <- Inyectada del state
+            description: desc_AOM, 
             color: "red",
         },
         'NoNormal': {
             title: "Diagnóstico: Otitis Media",
-            description: desc_NoNormal, // <- Inyectada del state
+            description: desc_NoNormal, 
             color: "red",
         }
-    }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); // Depende de las variables de estado
+    }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); 
 
     // ----------------------------------------------------
-    // VISTA DE LOGIN (NO AUTENTICADO)
+    // [RESTO DEL CÓDIGO DEL COMPONENTE]
     // ----------------------------------------------------
+    
     if (!isLoggedIn) {
         return (
             <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
@@ -138,9 +138,6 @@ const App = () => {
         );
     }
     
-    // ----------------------------------------------------
-    // ESTADO Y LÓGICA DEL CLASIFICADOR (AUTENTICADO)
-    // ----------------------------------------------------
     const [step, setStep] = useState(STEPS.UPLOAD);
     const [file, setFile] = useState(null); 
     const [previewUrl, setPreviewUrl] = useState(null); 
@@ -149,22 +146,18 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
 
-    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
-        // Usa import.meta.glob para cargar todas las imágenes .jpg en /public/images/
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
-            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
             const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
             
             images[className] = modules[path];
         }
         return images;
     }, []);
-    // ----------------------------------------------------
     
     const processFile = (selectedFile) => {
         if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -329,7 +322,11 @@ const App = () => {
         if (!classificationResult) return renderUploadStep();
 
         const data = resultData[classificationResult];
-        const classificationText = classificationResult.toUpperCase();
+        
+        // 🚨 CAMBIO AQUÍ: Formatear 'NoNormal' como 'NO NORMAL'
+        const classificationText = classificationResult === 'NoNormal' 
+            ? 'NO NORMAL' 
+            : classificationResult.toUpperCase(); 
         
         // Configuración de colores dinámica
         const statusColor = data.color === "green" ? "bg-green-500" : data.color === "red" ? "bg-red-500" : "bg-orange-500";
