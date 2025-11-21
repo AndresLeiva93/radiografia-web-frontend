@@ -75,14 +75,14 @@ const App = () => {
     // 🚨 EFECTO PARA CARGAR LAS DESCRIPCIONES DE LOS ARCHIVOS .TXT
     useEffect(() => {
         const fetchDescriptions = async () => {
-            const DEFAULT_NOT_FOUND_MESSAGE = "No se encuentra descripción. Verifica si los archivos .txt (Normal.txt, NoNormal.txt, etc.) están en la carpeta 'public'.";
+            const DEFAULT_NOT_FOUND_MESSAGE = "No se encuentra descripción. Verifica si los archivos .txt están en la carpeta 'public/descripcion/'.";
 
             for (const key in CLASSIFICATION_MAP) {
                 const { setter } = CLASSIFICATION_MAP[key];
                 
                 try {
-                    // La ruta apunta a la raíz de 'public' (ej: /NoNormal.txt)
-                    const response = await fetch(`/${key}.txt`); 
+                    // ✅ CORRECCIÓN DE RUTA: Ahora busca en /descripcion/<nombre_archivo>.txt
+                    const response = await fetch(`/descripcion/${key}.txt`); 
                     
                     if (response.ok) {
                         const text = await response.text();
@@ -126,6 +126,7 @@ const App = () => {
     
     // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
+        // Asegúrate de que las imágenes de ejemplo siguen en /public/images/
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
