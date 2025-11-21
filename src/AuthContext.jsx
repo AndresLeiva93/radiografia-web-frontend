@@ -10,23 +10,25 @@ export const useAuth = () => {
 
 // Proveedor del Contexto que envuelve toda la aplicación
 export const AuthProvider = ({ children }) => {
-    // 1. Inicializar el token a null y agregar un estado de carga
-    const [token, setToken] = useState(null);
-    const [isLoading, setIsLoading] = useState(true); // <-- NUEVO
+    // 1. Inicializar el estado del token
+    const [token, setToken] = useState(null); // Empezamos con null
+    // 🚨 CAMBIO CLAVE: Añadir un estado de carga inicializado en true
+    const [isLoading, setIsLoading] = useState(true);
 
-    // 2. Usar useEffect para leer el token de localStorage SÓLO después del montaje
-    useEffect(() => {
-        const storedToken = localStorage.getItem('authToken');
-        if (storedToken) {
-            setToken(storedToken);
-        }
-        setIsLoading(false); // La carga inicial ha terminado
-    }, []); 
-
-    // 3. Comprobar si está logeado (se recalcula en cada render)
+    // 2. Comprobar si está logeado (existe un token)
     const isLoggedIn = !!token; 
 
-    // Función para Iniciar Sesión
+    // 🚨 EFECTO PARA VERIFICAR EL TOKEN EN localStorage
+    useEffect(() => {
+        // Obtenemos el token del almacenamiento local
+        const storedToken = localStorage.getItem('authToken');
+        // Lo establecemos en el estado
+        setToken(storedToken);
+        // Marcamos que la carga inicial ha terminado
+        setIsLoading(false);
+    }, []); // Se ejecuta solo una vez al montar
+
+    // Función para Iniciar Sesión (simulada por ahora)
     const login = (simulatedToken) => {
         localStorage.setItem('authToken', simulatedToken);
         setToken(simulatedToken);
@@ -44,7 +46,8 @@ export const AuthProvider = ({ children }) => {
         token,
         login,
         logout,
-        isLoading, // <-- EXPORTAR EL ESTADO DE CARGA
+        // 🚨 Añadir el estado de carga
+        isLoading 
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
