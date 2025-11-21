@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; // 🚨 IMPORTANTE: Añadimos useEffect
+import React, { useState, useCallback, useMemo, useEffect } from 'react'; 
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -45,43 +45,100 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
 const App = () => {
     const { isLoggedIn, logout, token } = useAuth(); 
 
+    // --- Definición de las Clasificaciones Base ---
+    // Si agregas una nueva clase ('NewClass'), automáticamente se buscará un archivo /NewClass.txt
+    const BASE_CLASSIFICATIONS = useMemo(() => ({
+        'Normal': {
+            title: "Diagnóstico: Oído Medio Sano (Normal)",
+            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
+            color: "green",
+        },
+        'AOE': {
+            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
+            color: "orange",
+        },
+        'AOM': {
+            title: "Diagnóstico: Otitis Media Aguda (AOM)",
+            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
+            color: "red",
+        },
+        'NoNormal': {
+            title: "Diagnóstico: Otitis Media",
+            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
+            color: "red",
+        }
+    }), []);
+
+
     // --- ESTADO Y CARGA DINÁMICA DE RECURSOS ---
     
-    // ✅ 1. ESTADO: Almacena las descripciones cargadas
+    // ✅ 1. ESTADO: Almacena las descripciones cargadas o el mensaje de error
     const [dynamicDescriptions, setDynamicDescriptions] = useState({});
 
-    // ✅ 2. HOOK: Carga dinámica de las descripciones con FETCH (Método robusto para Vercel)
+    // ✅ 2. HOOK: Carga dinámica de las descripciones con FETCH
     useEffect(() => {
         const fetchDescriptions = async () => {
-            // Asegúrate de que estos nombres coincidan con tus archivos .txt en /public/
-            const fileNames = ['normal', 'nonormal', 'aoe', 'aom']; 
+            // Obtenemos dinámicamente las claves que necesitamos buscar (ej: 'Normal', 'AOE', etc.)
+            const classificationKeys = Object.keys(BASE_CLASSIFICATIONS); 
             const loadedDescriptions = {};
+            const DEFAULT_NOT_FOUND_MESSAGE = "No se encuentra descripción";
 
-            for (const name of fileNames) {
-                // Intentamos cargar el archivo .txt directamente desde la URL pública
+            for (const key of classificationKeys) {
+                // Intentamos cargar el archivo .txt usando el nombre exacto de la clase
+                // Esto soporta la mayúscula/minúscula que tienes en el archivo de GitHub (ej: /Normal.txt)
                 try {
-                    const response = await fetch(`/${name}.txt`); 
+                    const response = await fetch(`/${key}.txt`); 
                     
                     if (response.ok) {
                         const text = await response.text();
-                        // Almacenamos con la clave en minúsculas
-                        loadedDescriptions[name] = text.trim(); 
+                        // Almacenamos con la clave original (manteniendo el casing de la API)
+                        loadedDescriptions[key] = text.trim(); 
                     } else {
-                        loadedDescriptions[name] = "Descripción no disponible."; 
+                        // 404 o cualquier otro error HTTP
+                        loadedDescriptions[key] = DEFAULT_NOT_FOUND_MESSAGE; 
                     }
                 } catch (error) {
-                    console.error(`Error de red al intentar cargar ${name}.txt:`, error);
-                    loadedDescriptions[name] = "Descripción no disponible (Error de red).";
+                    // Error de red
+                    loadedDescriptions[key] = DEFAULT_NOT_FOUND_MESSAGE;
                 }
             }
             setDynamicDescriptions(loadedDescriptions);
         };
 
         fetchDescriptions();
-    }, []); 
+    }, [BASE_CLASSIFICATIONS]); // Dependencia para que se ejecute si la base cambia
 
+    // ✅ 3. Combina la DATA BASE con las DESCRIPCIONES CARGADAS (o fallback)
+    const resultData = useMemo(() => {
+        // Inicializamos con la estructura base
+        const mergedData = { ...BASE_CLASSIFICATIONS };
+
+        Object.keys(mergedData).forEach(key => {
+            // Usamos la descripción cargada si existe y no es el mensaje de error
+            const fetchedDesc = dynamicDescriptions[key];
+
+            if (fetchedDesc && fetchedDesc !== "No se encuentra descripción") {
+                mergedData[key] = {
+                    ...mergedData[key],
+                    description: fetchedDesc
+                };
+            } else if (fetchedDesc === "No se encuentra descripción") {
+                 // Si la descripción no se encontró, usamos el mensaje de error solicitado
+                mergedData[key] = {
+                    ...mergedData[key],
+                    description: "No se encuentra descripción"
+                };
+            } 
+            // Si fetchedDesc es undefined (aún cargando), se queda con la 'description' inicial
+        });
+
+        return mergedData;
+    }, [BASE_CLASSIFICATIONS, dynamicDescriptions]);
+    
     // ----------------------------------------------------
     // VISTA DE LOGIN (NO AUTENTICADO)
+    // ... (sin cambios)
     // ----------------------------------------------------
     if (!isLoggedIn) {
         return (
@@ -104,74 +161,15 @@ const App = () => {
     const [error, setError] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false); 
 
-    
-    // ✅ 3. FUNCIÓN DE RESULTADO DINÁMICA (Asegura la búsqueda con claves en minúsculas)
-    const getResultData = useCallback((descriptions) => {
-        
-        // Estructura base con las claves de clasificación que esperamos de la API
-        // Estas claves ('Normal', 'AOE', etc.) deben coincidir con la respuesta de tu API
-        const baseData = {
-            'Normal': {
-                title: "Diagnóstico: Oído Medio Sano (Normal)",
-                description: "Cargando descripción...", // Placeholder inicial
-                color: "green",
-            },
-            'AOE': {
-                title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-                description: "Cargando descripción...",
-                color: "orange",
-            },
-            'AOM': {
-                title: "Diagnóstico: Otitis Media Aguda (AOM)",
-                description: "Cargando descripción...",
-                color: "red",
-            },
-            'NoNormal': {
-                title: "Diagnóstico: Otitis Media",
-                description: "Cargando descripción...",
-                color: "red",
-            }
-        };
 
-        // Combina los datos base con las descripciones cargadas dinámicamente
-        return Object.keys(baseData).reduce((acc, key) => {
-            let descriptionText = baseData[key].description;
-            
-            // Convertimos la clave de la API a minúsculas para buscar en 'dynamicDescriptions'
-            const lowerKey = key.toLowerCase();
-            const desc = descriptions[lowerKey];
-
-            // 1. Si existe una descripción cargada para la clave en minúsculas
-            if (desc && desc !== "Descripción no disponible.") {
-                 descriptionText = desc;
-            } 
-            // 2. Fallback: Si no es 'normal' y tenemos el archivo 'nonormal' genérico, lo usamos
-            else if (lowerKey !== 'normal' && descriptions['nonormal'] && descriptions['nonormal'] !== "Descripción no disponible.") {
-                 descriptionText = descriptions['nonormal']; 
-            }
-            
-            acc[key] = {
-                ...baseData[key],
-                description: descriptionText
-            };
-            return acc;
-        }, {});
-    }, []);
-
-    // ✅ 4. Calcula resultData dinámicamente
-    const resultData = useMemo(() => getResultData(dynamicDescriptions), [dynamicDescriptions, getResultData]);
-    
     // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
-        // Mantenemos esta lógica con import.meta.glob ya que funciona mejor para assets internos
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
-            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
             const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
-            
             images[className] = modules[path];
         }
         return images;
@@ -360,7 +358,7 @@ const App = () => {
                         {classificationText}
                     </div>
 
-                    {/* ✅ RENDERIZADO DE LA DESCRIPCIÓN (Debajo del diagnóstico) */}
+                    {/* ✅ RENDERIZADO DE LA DESCRIPCIÓN */}
                     <p className="mt-4 text-gray-700 text-sm md:text-base border-t border-b border-gray-200 py-3 px-2 mx-auto max-w-xl text-justify">
                         {data.description}
                     </p>
