@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; // ✅ Importamos 'useEffect'
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -45,21 +45,22 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
 const App = () => {
     const { isLoggedIn, logout, token } = useAuth(); 
 
-    // ✅ NUEVO ESTADO: Almacena las descripciones cargadas de los archivos .txt
+    // --- ESTADO Y CARGA DINÁMICA DE RECURSOS ---
+    
+    // ✅ 1. NUEVO ESTADO: Almacena las descripciones cargadas de los archivos .txt
     const [dynamicDescriptions, setDynamicDescriptions] = useState({});
 
-    // ✅ NUEVO HOOK: Carga dinámica de las descripciones de archivos .txt
+    // ✅ 2. Carga dinámica de las descripciones (con claves en minúsculas)
     useEffect(() => {
         // Usa import.meta.glob para cargar todos los archivos .txt en /public/
-        // Esto es un patrón de Vite para manejar archivos estáticos.
         const modules = import.meta.glob('/public/*.txt', { eager: true, as: 'raw' });
         const descriptions = {};
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
-            // La CLASE es el nombre del archivo sin extensión (Ej: 'Normal' de 'Normal.txt')
-            const className = fileNameWithExt.split('.')[0]; 
-            descriptions[className] = modules[path].trim(); // Guardamos el contenido limpio
+            // La clave se guarda en minúsculas (Ej: 'normal' de 'Normal.txt')
+            const classNameLower = fileNameWithExt.split('.')[0].toLowerCase(); 
+            descriptions[classNameLower] = modules[path].trim();
         }
         setDynamicDescriptions(descriptions);
     }, []); 
@@ -89,10 +90,10 @@ const App = () => {
     const [isDragOver, setIsDragOver] = useState(false); 
 
     
-    // ✅ FUNCIÓN DE RESULTADO DINÁMICA (Sustituye a 'resultData' memo original)
+    // ✅ 3. FUNCIÓN DE RESULTADO DINÁMICA (Mapea la descripción a la clave original)
     const getResultData = useCallback((descriptions) => {
         
-        // Estructura base con títulos y colores
+        // Estructura base con las claves de clasificación que esperamos de la API
         const baseData = {
             'Normal': {
                 title: "Diagnóstico: Oído Medio Sano (Normal)",
@@ -120,13 +121,16 @@ const App = () => {
         return Object.keys(baseData).reduce((acc, key) => {
             let descriptionText = baseData[key].description;
             
-            // Si existe un archivo .txt con el nombre de la CLASE (key), lo usa.
-            if (descriptions[key]) {
-                 descriptionText = descriptions[key];
-            } else if (!descriptions[key] && key !== 'Normal' && descriptions['NoNormal']) {
-                // Si la predicción es una subclase ('AOE', 'AOM', etc.) pero el usuario solo 
-                // provee 'NoNormal.txt' (para un modelo de 2 clases), usa esa descripción como fallback.
-                 descriptionText = descriptions['NoNormal']; 
+            // Convierte la clave original (ej: 'Normal') a minúsculas (ej: 'normal') para buscar
+            const lowerKey = key.toLowerCase();
+
+            // 1. Si existe un archivo .txt con el nombre de la CLASE (en minúsculas), lo usa.
+            if (descriptions[lowerKey]) {
+                 descriptionText = descriptions[lowerKey];
+            } 
+            // 2. Si la predicción NO es 'normal' y existe un archivo 'nonormal.txt', lo usa como fallback.
+            else if (lowerKey !== 'normal' && descriptions['nonormal']) {
+                 descriptionText = descriptions['nonormal']; 
             }
             
             acc[key] = {
@@ -137,28 +141,23 @@ const App = () => {
         }, {});
     }, []);
 
-    // ✅ Usa useMemo para calcular resultData solo cuando cambian las descripciones cargadas
+    // ✅ 4. Usa useMemo para calcular resultData solo cuando cambian las descripciones cargadas
     const resultData = useMemo(() => getResultData(dynamicDescriptions), [dynamicDescriptions, getResultData]);
     
-
     // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
-        // Usa import.meta.glob para cargar todas las imágenes .jpg en /public/images/
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
         for (const path in modules) {
             const fileNameWithExt = path.split('/').pop();
-            // El nombre de la clase es el nombre del archivo sin extensión, reemplazando '_' por espacio
             const className = fileNameWithExt.split('.')[0].replace(/_/g, ' '); 
-            
             images[className] = modules[path];
         }
         return images;
     }, []);
     // ----------------------------------------------------
     
-    // ... (El resto del código de processFile, handleFileChange, handleDrop, etc. permanece igual)
     const processFile = (selectedFile) => {
         if (selectedFile && selectedFile.type.startsWith('image/')) {
             setFile(selectedFile);
@@ -334,14 +333,14 @@ const App = () => {
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
                         {/* Título de Resultado */}
-                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{data.title}</span>
                     </h2>
                     
                     <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
                         {classificationText}
                     </div>
 
-                    {/* ✅ NUEVO: RENDERIZADO DE LA DESCRIPCIÓN (Debajo del diagnóstico) */}
+                    {/* ✅ RENDERIZADO DE LA DESCRIPCIÓN (Debajo del diagnóstico) */}
                     <p className="mt-4 text-gray-700 text-sm md:text-base border-t border-b border-gray-200 py-3 px-2 mx-auto max-w-xl text-justify">
                         {data.description}
                     </p>
