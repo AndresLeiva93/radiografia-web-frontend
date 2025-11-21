@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react'; // ✅ Importamos 'useEffect'
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -44,14 +44,14 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
 // Componente principal de la aplicación
 const App = () => {
     const { isLoggedIn, logout, token } = useAuth(); 
-    
-    // --- ESTADO Y CARGA DINÁMICA DE RECURSOS ---
-    // ✅ 1. NUEVO ESTADO para las descripciones cargadas
+
+    // ✅ NUEVO ESTADO: Almacena las descripciones cargadas de los archivos .txt
     const [dynamicDescriptions, setDynamicDescriptions] = useState({});
-    
-    // ✅ 2. Carga dinámica de las descripciones de archivos .txt
+
+    // ✅ NUEVO HOOK: Carga dinámica de las descripciones de archivos .txt
     useEffect(() => {
         // Usa import.meta.glob para cargar todos los archivos .txt en /public/
+        // Esto es un patrón de Vite para manejar archivos estáticos.
         const modules = import.meta.glob('/public/*.txt', { eager: true, as: 'raw' });
         const descriptions = {};
 
@@ -59,7 +59,7 @@ const App = () => {
             const fileNameWithExt = path.split('/').pop();
             // La CLASE es el nombre del archivo sin extensión (Ej: 'Normal' de 'Normal.txt')
             const className = fileNameWithExt.split('.')[0]; 
-            descriptions[className] = modules[path];
+            descriptions[className] = modules[path].trim(); // Guardamos el contenido limpio
         }
         setDynamicDescriptions(descriptions);
     }, []); 
@@ -88,48 +88,45 @@ const App = () => {
     const [error, setError] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false); 
 
-    // ✅ 3. resultData: Se convierte en una función que usa las descripciones cargadas
+    
+    // ✅ FUNCIÓN DE RESULTADO DINÁMICA (Sustituye a 'resultData' memo original)
     const getResultData = useCallback((descriptions) => {
         
-        // Define la estructura base (títulos, colores, etc.)
+        // Estructura base con títulos y colores
         const baseData = {
             'Normal': {
                 title: "Diagnóstico: Oído Medio Sano (Normal)",
-                description: "Cargando descripción...", // Placeholder
+                description: "Cargando descripción...", // Placeholder por si falla
                 color: "green",
             },
             'AOE': {
                 title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-                description: "Cargando descripción...", // Placeholder
+                description: "Cargando descripción...",
                 color: "orange",
             },
             'AOM': {
                 title: "Diagnóstico: Otitis Media Aguda (AOM)",
-                description: "Cargando descripción...", // Placeholder
+                description: "Cargando descripción...",
                 color: "red",
             },
             'NoNormal': {
                 title: "Diagnóstico: Otitis Media",
-                description: "Cargando descripción...", // Placeholder
+                description: "Cargando descripción...",
                 color: "red",
             }
         };
 
-        // Sobrescribe la descripción con el contenido dinámico si existe
-        // NOTA: 'Normal' y 'NoNormal' son las claves esperadas de los TXT
+        // Combina los datos base con las descripciones cargadas dinámicamente
         return Object.keys(baseData).reduce((acc, key) => {
             let descriptionText = baseData[key].description;
             
-            // Reemplazar la descripción base con el contenido del archivo .txt si está disponible
+            // Si existe un archivo .txt con el nombre de la CLASE (key), lo usa.
             if (descriptions[key]) {
-                 descriptionText = descriptions[key].trim();
-            } else if (key === 'AOM' && descriptions['NoNormal']) {
-                // Caso especial: Si el modelo predice 'AOM' pero solo hay 'NoNormal.txt' 
-                // usa la descripción de 'NoNormal' (si el modelo de 2 clases es 'Normal'/'NoNormal').
-                 descriptionText = descriptions['NoNormal'].trim(); 
-            } else if (key === 'AOE' && descriptions['NoNormal']) {
-                // Caso especial: Si el modelo predice 'AOE' pero solo hay 'NoNormal.txt'
-                 descriptionText = descriptions['NoNormal'].trim(); 
+                 descriptionText = descriptions[key];
+            } else if (!descriptions[key] && key !== 'Normal' && descriptions['NoNormal']) {
+                // Si la predicción es una subclase ('AOE', 'AOM', etc.) pero el usuario solo 
+                // provee 'NoNormal.txt' (para un modelo de 2 clases), usa esa descripción como fallback.
+                 descriptionText = descriptions['NoNormal']; 
             }
             
             acc[key] = {
@@ -140,11 +137,11 @@ const App = () => {
         }, {});
     }, []);
 
-    // ✅ 4. Usa useMemo para calcular resultData solo cuando cambian las descripciones cargadas.
+    // ✅ Usa useMemo para calcular resultData solo cuando cambian las descripciones cargadas
     const resultData = useMemo(() => getResultData(dynamicDescriptions), [dynamicDescriptions, getResultData]);
     
 
-    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
+    // LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
     const dynamicExampleImages = useMemo(() => {
         // Usa import.meta.glob para cargar todas las imágenes .jpg en /public/images/
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
@@ -161,6 +158,7 @@ const App = () => {
     }, []);
     // ----------------------------------------------------
     
+    // ... (El resto del código de processFile, handleFileChange, handleDrop, etc. permanece igual)
     const processFile = (selectedFile) => {
         if (selectedFile && selectedFile.type.startsWith('image/')) {
             setFile(selectedFile);
@@ -227,9 +225,6 @@ const App = () => {
             const classification = result?.prediccion; 
 
             if (!classification || !resultData[classification]) {
-                // NOTA: Si la clasificación no existe, podría ser por una clase nueva. 
-                // Usaremos 'NoNormal' si no es 'Normal' como fallback para descripciones.
-                // Sin embargo, si la API es estricta con las clases, el error es mejor.
                 throw new Error(`Respuesta de API inválida. Clasificación no reconocida: ${classification}`);
             }
             
@@ -339,19 +334,18 @@ const App = () => {
                 <div className="text-center">
                     <h2 className="text-2xl font-extrabold text-gray-900">
                         {/* Título de Resultado */}
-                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{data.title}</span>
+                        <span className={`${data.color === "green" ? 'text-green-600' : data.color === "red" ? 'text-red-600' : 'text-orange-600'}`}>{isHealthy ? "Diagnóstico Confirmado" : "Resultado"}</span>
                     </h2>
                     
                     <div className={`mt-4 inline-block px-6 py-2 text-xl font-black text-white rounded-full shadow-xl ${statusColor} ring-4 ${statusRing}`}>
                         {classificationText}
                     </div>
 
-                    {/* ✅ NUEVO: RENDERIZADO DE LA DESCRIPCIÓN */}
+                    {/* ✅ NUEVO: RENDERIZADO DE LA DESCRIPCIÓN (Debajo del diagnóstico) */}
                     <p className="mt-4 text-gray-700 text-sm md:text-base border-t border-b border-gray-200 py-3 px-2 mx-auto max-w-xl text-justify">
                         {data.description}
                     </p>
                     {/* ------------------------------------------- */}
-
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
@@ -368,19 +362,14 @@ const App = () => {
                     <div className="space-y-3">
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
                         
-                        {/* ✅ RENDERIZADO DINÁMICO en 2 COLUMNAS (con distribución interna 70%-30% y padding p-2) */}
+                        {/* RENDERIZADO DINÁMICO de imágenes de ejemplo */}
                         <div className="grid grid-cols-2 gap-2"> 
                             {Object.keys(dynamicExampleImages).map((key) => (
-                                // Contenedor principal de la tarjeta (vertical)
                                 <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
-                                    
-                                    {/* TÍTULO ARRIBA (Distribución 30% título / 70% espacio) */}
                                     <div className="flex w-full items-center justify-between px-1">
                                         <p className="text-left text-xs font-bold text-gray-800 w-1/3 truncate" title={key}>{key}</p> 
                                         <div className="w-2/3"></div> 
                                     </div>
-                                    
-                                    {/* 🚨 Contenedor de IMAGEN con PADDING (p-2) para achicarla */}
                                     <div className="w-full p-2"> 
                                         <img 
                                             src={dynamicExampleImages[key]} 
@@ -388,7 +377,6 @@ const App = () => {
                                             className="w-full h-auto object-cover rounded-md border-2 border-gray-100" 
                                         />
                                     </div>
-                                    
                                 </div>
                             ))}
                         </div>
