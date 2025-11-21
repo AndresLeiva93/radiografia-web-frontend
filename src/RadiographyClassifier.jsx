@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext'; 
 import Login from './Login'; 
 
@@ -43,116 +43,11 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
 
 // Componente principal de la aplicación
 const App = () => {
-    // 🚨 CAMBIO 1: Incluir 'isLoading' del contexto de autenticación
-    const { isLoggedIn, logout, token, isLoading } = useAuth(); 
-
-    // ----------------------------------------------------
-    // 💡 PASO 1: DEFINICIÓN DE DESCRIPCIONES (STATE)
-    // Inicializadas con un simple mensaje de carga
-    // ----------------------------------------------------
-    const PLACEHOLDER_DESC = "Cargando descripción...";
-
-    const [desc_Normal, setDesc_Normal] = useState(PLACEHOLDER_DESC);
-    const [desc_AOE, setDesc_AOE] = useState(PLACEHOLDER_DESC);
-    const [desc_AOM, setDesc_AOM] = useState(PLACEHOLDER_DESC);
-    const [desc_NoNormal, setDesc_NoNormal] = useState(PLACEHOLDER_DESC);
+    // 🚨 PASO 1: EXTRAER TODOS LOS HOOKS (useAuth, useState, useMemo, useCallback)
+    // DEBEN ESTAR ANTES DE CUALQUIER RETURN CONDICIONAL.
+    const { isLoggedIn, logout, token, isLoading } = useAuth(); // Incluir isLoading
     
-    const CLASSIFICATION_MAP = useMemo(() => ({
-        'Normal': { setter: setDesc_Normal },
-        'AOE': { setter: setDesc_AOE },
-        'AOM': { setter: setDesc_AOM },
-        'NoNormal': { setter: setDesc_NoNormal },
-    }), []);
-
-
-    // ----------------------------------------------------
-    // 💡 PASO 2: HOOK DE EFECTO PARA FETCH DE DESCRIPCIONES (Corregido)
-    // ----------------------------------------------------
-    useEffect(() => {
-        const fetchDescriptions = async () => {
-            const DEFAULT_NOT_FOUND_MESSAGE = "No se encuentra descripción";
-
-            for (const key in CLASSIFICATION_MAP) {
-                const { setter } = CLASSIFICATION_MAP[key];
-                
-                try {
-                    // La ruta corregida apunta a /descripcion/{Clase}.txt
-                    const response = await fetch(`/descripcion/${key}.txt`); 
-                    
-                    if (response.ok) {
-                        const text = await response.text();
-                        setter(text.trim()); // Establece la descripción del archivo
-                    } else {
-                        setter(DEFAULT_NOT_FOUND_MESSAGE); 
-                    }
-                } catch (error) {
-                    setter(DEFAULT_NOT_FOUND_MESSAGE);
-                }
-            }
-        };
-
-        fetchDescriptions();
-    }, [CLASSIFICATION_MAP]); 
-
-
-    // ----------------------------------------------------
-    // 💡 PASO 3: MAPEO DE RESULTADOS
-    // ----------------------------------------------------
-    const resultData = useMemo(() => ({
-        'Normal': {
-            title: "Diagnóstico: Oído Medio Sano (Normal)",
-            description: desc_Normal, 
-            color: "green",
-        },
-        'AOE': {
-            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
-            description: desc_AOE, 
-            color: "orange",
-        },
-        'AOM': {
-            title: "Diagnóstico: Otitis Media Aguda (AOM)",
-            description: desc_AOM, 
-            color: "red",
-        },
-        'NoNormal': {
-            title: "Diagnóstico: Otitis Media",
-            description: desc_NoNormal, 
-            color: "red",
-        }
-    }), [desc_Normal, desc_AOE, desc_AOM, desc_NoNormal]); 
-
-    // ----------------------------------------------------
-    // 🚨 CAMBIO 2: VISTA DE CARGA (Esperar a que `isLoading` sea false)
-    // ----------------------------------------------------
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center font-inter">
-                <svg className="animate-spin h-8 w-8 text-indigo-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p className="text-lg font-medium text-gray-700">Cargando sesión...</p>
-            </div>
-        );
-    }
-
-    // ----------------------------------------------------
-    // VISTA DE LOGIN (NO AUTENTICADO)
-    // ----------------------------------------------------
-    if (!isLoggedIn) {
-        return (
-            <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
-                <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
-                <div className="flex flex-col items-center justify-center flex-grow w-full">
-                    <Login />
-                </div>
-            </div>
-        );
-    }
-    
-    // ----------------------------------------------------
-    // ESTADO Y LÓGICA DEL CLASIFICADOR (AUTENTICADO)
-    // ----------------------------------------------------
+    // ESTADO Y LÓGICA DEL CLASIFICADOR (MOVIDOS AL PRINCIPIO)
     const [step, setStep] = useState(STEPS.UPLOAD);
     const [file, setFile] = useState(null); 
     const [previewUrl, setPreviewUrl] = useState(null); 
@@ -160,9 +55,32 @@ const App = () => {
     const [error, setError] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false); 
 
+    const resultData = useMemo(() => ({
+        'Normal': {
+            title: "Diagnóstico: Oído Medio Sano (Normal)",
+            description: "La estructura analizada por el modelo de IA no presenta las anomalías características de la otitis. Los contornos óseos y las cavidades aéreas se observan dentro de los parámetros esperados. Esto indica una baja probabilidad de patología en la región analizada.",
+            color: "green",
+        },
+        'AOE': {
+            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+            description: "El modelo de IA detectó patrones que sugieren Otitis Externa Aguda (AOE). Se necesita confirmación médica para el diagnóstico definitivo y el tratamiento.",
+            color: "orange",
+        },
+        'AOM': {
+            title: "Diagnóstico: Otitis Media Aguda (AOM)",
+            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
+            color: "red",
+        },
+        'NoNormal': {
+            title: "Diagnóstico: Otitis Media",
+            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
+            color: "red",
+        }
+    }), []);
 
-    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/
+    // ✅ LÓGICA DINÁMICA: Carga dinámica de imágenes de ejemplo desde /public/images/ (MOVIDO AL PRINCIPIO)
     const dynamicExampleImages = useMemo(() => {
+        // Usa import.meta.glob para cargar todas las imágenes .jpg en /public/images/
         const modules = import.meta.glob('/public/images/*.jpg', { eager: true, as: 'url' });
         const images = {};
 
@@ -175,40 +93,9 @@ const App = () => {
         }
         return images;
     }, []);
+    // ----------------------------------------------------
     
-    const processFile = (selectedFile) => {
-        if (selectedFile && selectedFile.type.startsWith('image/')) {
-            setFile(selectedFile);
-            setPreviewUrl(URL.createObjectURL(selectedFile));
-            setError(null);
-        } else {
-            setError("Tipo de archivo no válido. Por favor, sube una imagen (JPG/PNG).");
-            setFile(null);
-            setPreviewUrl(null);
-        }
-    };
-
-    const handleFileChange = (e) => {
-        processFile(e.target.files[0]);
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragOver(false);
-        const files = e.dataTransfer.files;
-        if (files.length) {
-          processFile(files[0]);
-        }
-    };
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragOver(true);
-    };
-    const handleDragLeave = () => {
-        setIsDragOver(false);
-    };
-
-
+    // Función de clasificación (MOVIDA AL PRINCIPIO)
     const classifyImage = useCallback(async () => {
         if (!file) {
           setError("Por favor, sube una imagen primero.");
@@ -266,6 +153,72 @@ const App = () => {
             setClassificationResult(null);
         }
     }, [file, resultData, token]);
+
+
+    // ----------------------------------------------------
+    // 🚨 PASO 2: VISTA DE CARGA (PRIMERA COMPROBACIÓN CONDICIONAL)
+    // ----------------------------------------------------
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex items-center justify-center font-inter">
+                <svg className="animate-spin h-8 w-8 text-indigo-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-lg font-medium text-gray-700">Cargando sesión...</p>
+            </div>
+        );
+    }
+    
+    // ----------------------------------------------------
+    // PASO 3: VISTA DE LOGIN (SEGUNDA COMPROBACIÓN CONDICIONAL)
+    // ----------------------------------------------------
+    if (!isLoggedIn) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex flex-col items-center font-inter">
+                <NavbarContent isLoggedIn={isLoggedIn} logout={logout} />
+                <div className="flex flex-col items-center justify-center flex-grow w-full">
+                    <Login />
+                </div>
+            </div>
+        );
+    }
+
+    // ----------------------------------------------------
+    // LÓGICA AUXILIAR (PUEDE IR AQUÍ O ARRIBA, NO SON HOOKS)
+    // ----------------------------------------------------
+    const processFile = (selectedFile) => {
+        if (selectedFile && selectedFile.type.startsWith('image/')) {
+            setFile(selectedFile);
+            setPreviewUrl(URL.createObjectURL(selectedFile));
+            setError(null);
+        } else {
+            setError("Tipo de archivo no válido. Por favor, sube una imagen (JPG/PNG).");
+            setFile(null);
+            setPreviewUrl(null);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        processFile(e.target.files[0]);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const files = e.dataTransfer.files;
+        if (files.length) {
+          processFile(files[0]);
+        }
+    };
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    };
+    const handleDragLeave = () => {
+        setIsDragOver(false);
+    };
+
 
     const handleReset = () => {
         setStep(STEPS.UPLOAD);
@@ -339,8 +292,6 @@ const App = () => {
         if (!classificationResult) return renderUploadStep();
 
         const data = resultData[classificationResult];
-        
-        // Formato para el resultado principal (ej: NO NORMAL)
         const classificationText = classificationResult === 'NoNormal' 
             ? 'NO NORMAL' 
             : classificationResult.toUpperCase(); 
@@ -361,11 +312,9 @@ const App = () => {
                         {classificationText}
                     </div>
 
-                    {/* ✅ RENDERIZADO DE LA DESCRIPCIÓN (Asignada dinámicamente) */}
                     <p className="mt-4 text-gray-700 text-sm md:text-base border-t border-b border-gray-200 py-3 px-2 mx-auto max-w-xl text-justify">
                         {data.description}
                     </p>
-                    {/* ------------------------------------------- */}
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6 items-start">
@@ -382,17 +331,14 @@ const App = () => {
                     <div className="space-y-3">
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Ejemplos de Clasificación:</h3>
                         
-                        {/* ✅ RENDERIZADO DINÁMICO de imágenes de ejemplo */}
                         <div className="grid grid-cols-2 gap-2"> 
                             {Object.keys(dynamicExampleImages).map((key) => {
-                                // 1. Formatear la clave: Reemplazar 'NoNormal' por 'NO NORMAL' y pasar a mayúsculas.
                                 const displayKey = key.replace('NoNormal', 'NO NORMAL').toUpperCase();
-
                                 return (
                                     // Contenedor principal de la tarjeta (vertical)
                                     <div key={key} className="flex flex-col items-center p-1 rounded-lg border border-gray-200 bg-white shadow-sm w-full">
                                         
-                                        {/* TÍTULO ARRIBA: Ahora sin truncate para mostrar el texto completo */}
+                                        {/* TÍTULO ARRIBA */}
                                         <div className="flex w-full items-center justify-center pt-1">
                                             <p className="text-center text-xs font-bold text-gray-800" title={displayKey}>{displayKey}</p> 
                                         </div>
@@ -410,8 +356,6 @@ const App = () => {
                                 );
                             })}
                         </div>
-                        {/* ------------------------------------------- */}
-
                     </div>
                 </div>
 
@@ -462,7 +406,7 @@ const App = () => {
 
             <main className="w-full max-w-3xl"> 
                 
-                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis.</p>
+                <p className="text-center text-gray-600 mb-8">Herramienta de apoyo al diagnóstico rápido para la detección de otitis (media y externa).</p>
 
                 {getStepIndicator()}
 
@@ -472,6 +416,7 @@ const App = () => {
             </main>
             
             <footer className="mt-8 text-sm text-gray-500">
+                Desarrollado con React y Tailwind CSS
             </footer>
         </div>
     );
