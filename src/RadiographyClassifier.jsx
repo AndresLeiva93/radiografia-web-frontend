@@ -84,6 +84,11 @@ const App = () => {
             title: "Diagnóstico: Otitis Media Aguda (AOM)",
             description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
             color: "red",
+        },
+        'NoNormal': {
+            title: "Diagnóstico: Otitis Media",
+            description: "El modelo de IA detectó opacidades y/o irregularidades en la cavidad del oído medio, lo cual es altamente indicativo de Otitis Media Aguda (AOM). Se recomienda la revisión y confirmación por un especialista médico.",
+            color: "red",
         }
     }), []);
 
