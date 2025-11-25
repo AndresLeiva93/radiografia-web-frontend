@@ -8,7 +8,14 @@ const AUTHORIZED_USERS = [
     { email: 'tnascimento@miuandes.cl', password: 'tnascimento123' },
     { email: 'tom.opazo@profesor.duoc.cl', password: 'tom.opazo123' },
     { email: 'fel.navarroc@duocuc.cl', password: 'fel.navarroc123' },
-    { email: 'j.dillarza@profesor.duoc.cl', password: 'j.dillarza123' }
+    { email: 'j.dillarza@profesor.duoc.cl', password: 'j.dillarza123' },
+    { email: 'sacastillo2@miuandes.cl', password: 'sacastillo2123' },
+    { email: 'tnascimento@miuandes.cl', password: 'tnascimento123' },
+    { email: 'mcpinilla@miuandes.cl', password: 'mcpinilla123' },
+    { email: 'nlvergara@miuandes.cl', password: 'nlvergara123' },
+    { email: 'vcardona@miuandes.cl', password: 'vcardona123' },
+    { email: 'pmgarcia@miuandes.cl', password: 'pmgarcia123' },
+    { email: 'mconstanzabeltranm@gmail.com', password: 'mconstanzabeltranm123' }
 ];
 
 const AuthScreen = () => {
