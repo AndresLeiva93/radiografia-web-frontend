@@ -165,9 +165,9 @@ const App = () => {
         try {
             const response = await fetch(RENDER_API_URL, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}` 
-                },
+                //headers: {
+                //    'Authorization': `Bearer ${token}` 
+                //},
                 body: formData,
             });
 
