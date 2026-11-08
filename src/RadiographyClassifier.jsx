@@ -3,7 +3,7 @@ import { useAuth } from './AuthContext';
 import Login from './Login'; 
 
 // URL de la API
-const RENDER_API_URL = "https://radiografia-ia-api.onrender.com/predict"; 
+const RENDER_API_URL = "https://oido-classification-images-api-clone.onrender.com/predict";
 
 // Constantes de Estado
 const STEPS = {
