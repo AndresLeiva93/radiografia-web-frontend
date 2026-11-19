@@ -1,3 +1,4 @@
+// src/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
@@ -7,27 +8,27 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-    const [token, setToken] = useState(null); 
-    // 🚨 Nuevo estado de carga: Inicializado en true
+    const [token, setToken] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const isLoggedIn = !!token; 
+    const isLoggedIn = !!token;
 
-    // ✅ EFECTO PARA VERIFICAR EL TOKEN DE FORMA ASÍNCRONA
     useEffect(() => {
-        const storedToken = localStorage.getItem('authToken');
+        // Limpia cualquier sesión vieja que haya quedado en localStorage
+        localStorage.removeItem('authToken');
+
+        const storedToken = sessionStorage.getItem('authToken');
         setToken(storedToken);
-        // Marca que la carga inicial terminó SÓLO después de leer localStorage
-        setIsLoading(false); 
-    }, []); 
+        setIsLoading(false);
+    }, []);
 
     const login = (simulatedToken) => {
-        localStorage.setItem('authToken', simulatedToken);
+        sessionStorage.setItem('authToken', simulatedToken);
         setToken(simulatedToken);
     };
 
     const logout = () => {
-        localStorage.removeItem('authToken');
+        sessionStorage.removeItem('authToken');
         setToken(null);
     };
 
@@ -36,7 +37,6 @@ export const AuthProvider = ({ children }) => {
         token,
         login,
         logout,
-        // 🚨 Exportar isLoading
         isLoading
     };
 
