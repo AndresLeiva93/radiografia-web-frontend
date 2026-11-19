@@ -280,7 +280,7 @@ const App = () => {
                 {previewUrl ? (
                 <img 
                     src={previewUrl} 
-                    alt="Radiografía Previa" 
+                    alt="Otoscopía Previa" 
                     className="h-full w-auto max-h-44 object-contain rounded-lg shadow-lg"
                 />
                 ) : (
@@ -360,7 +360,7 @@ const App = () => {
                         <h3 className="text-lg font-semibold text-indigo-700 border-b border-indigo-200 w-full text-center pb-1">Imagen:</h3>
                         <img
                         src={previewUrl}
-                        alt="Radiografía Clasificada"
+                        alt="Otoscopía Clasificada"
                         className="w-full max-w-xs h-auto object-contain rounded-xl shadow-2xl border-4 border-indigo-400"
                         />
                     </div>
