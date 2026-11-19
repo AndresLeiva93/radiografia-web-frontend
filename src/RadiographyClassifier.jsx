@@ -19,10 +19,10 @@ const NavbarContent = ({ logout, isLoggedIn }) => (
     <nav className="flex items-center justify-between w-full mb-8 px-6 py-4 bg-white shadow-lg">
         <div className="flex flex-col">
             <h1 className="text-xl font-extrabold text-gray-900">
-                👂 Oido IA Match
+                👂 Otoscop-IA
             </h1>
             <p className="text-xs text-gray-500">
-                Herramienta de apoyo al diagnóstico rápido.
+                Versión preliminar - uso clínico responsable por profesionales de la salud.
             </p>
         </div>
         
@@ -427,7 +427,7 @@ const App = () => {
         }
         return (
             <div className='text-xs font-semibold text-indigo-500 flex justify-center space-x-2 mb-4'>
-                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Radiografía</span>
+                <span className={`px-2 py-1 rounded-full ${currentStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>1. Subir Otoscopía</span>
                 <span className={`px-2 py-1 rounded-full ${currentStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>2. Clasificar</span>
                 <span className={`px-2 py-1 rounded-full ${currentStep >= 3 ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-600'}`}>3. Resultado IA</span>
             </div>
@@ -452,7 +452,7 @@ const App = () => {
             </main>
             
             <footer className="mt-8 text-sm text-gray-500">
-                Desarrollado con React y Tailwind CSS
+                
             </footer>
         </div>
     );
