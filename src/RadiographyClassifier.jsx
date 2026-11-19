@@ -108,17 +108,17 @@ const App = () => {
             color: "green",
         },
         'AOE': {
-            title: "Diagnóstico: Oído Patológico" //Otitis Externa Aguda (AOE)",
+            title: "Diagnóstico: Oído Patológico", //Otitis Externa Aguda (AOE)",
             description: desc_AOE, // ✅ Usa el contenido cargado del archivo .txt
             color: "orange",
         },
         'AOM': {
-            title: "Diagnóstico: Oído Patológico" //Otitis Media Aguda (AOM)",
+            title: "Diagnóstico: Oído Patológico", //Otitis Media Aguda (AOM)",
             description: desc_AOM, // ✅ Usa el contenido cargado del archivo .txt
             color: "red",
         },
         'NoNormal': {
-            title: "Diagnóstico: Oído Patológico" // Otitis Media",
+            title: "Diagnóstico: Oído Patológico", // Otitis Media",
             description: desc_NoNormal, // ✅ Usa el contenido cargado del archivo .txt
             color: "red",
         }
