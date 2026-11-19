@@ -108,17 +108,17 @@ const App = () => {
             color: "green",
         },
         'AOE': {
-            title: "Diagnóstico: Otitis Externa Aguda (AOE)",
+            title: "Diagnóstico: Oído Patológico" //Otitis Externa Aguda (AOE)",
             description: desc_AOE, // ✅ Usa el contenido cargado del archivo .txt
             color: "orange",
         },
         'AOM': {
-            title: "Diagnóstico: Otitis Media Aguda (AOM)",
+            title: "Diagnóstico: Oído Patológico" //Otitis Media Aguda (AOM)",
             description: desc_AOM, // ✅ Usa el contenido cargado del archivo .txt
             color: "red",
         },
         'NoNormal': {
-            title: "Diagnóstico: Otitis Media",
+            title: "Diagnóstico: Oído Patológico" // Otitis Media",
             description: desc_NoNormal, // ✅ Usa el contenido cargado del archivo .txt
             color: "red",
         }
@@ -305,7 +305,7 @@ const App = () => {
                 onClick={classifyImage}
                 className="w-full px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-[1.02] disabled:opacity-50"
                 >
-                🚀 Paso 2: Clasificar Radiografía
+                🚀 Paso 2: Clasificar Otoscopía
                 </button>
             )}
         </div>
